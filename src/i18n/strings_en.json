@@ -9,7 +9,11 @@
     "brent": "Brent’s Method"
   },
   "preferences": {
-    "title": "Simulation"
+    "title": "Simulation",
+    "syntaxHeading": "Custom function syntax",
+    "operators": "Enter arithmetic in x. Use * for multiplication, / for division, and ^ for powers. Parentheses control the order of operations.",
+    "functions": "Use pi or e for constants. Supported functions are abs, sqrt, cbrt, exp, log, sin, cos, and tan.",
+    "example": "For example, sin(x) - x/2. Newton also needs f′(x). Fixed-Point Iteration needs a map g(x)."
   },
   "solver": {
     "heading": "Starting conditions",

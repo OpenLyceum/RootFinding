@@ -9,7 +9,11 @@
     "brent": "Méthode de Brent"
   },
   "preferences": {
-    "title": "Simulation"
+    "title": "Simulation",
+    "syntaxHeading": "Syntaxe des fonctions personnalisées",
+    "operators": "Saisissez une expression en x. Utilisez * pour la multiplication, / pour la division et ^ pour les puissances. Les parenthèses fixent l’ordre des opérations.",
+    "functions": "Utilisez pi ou e pour les constantes. Fonctions disponibles : abs, sqrt, cbrt, exp, log, sin, cos et tan.",
+    "example": "Par exemple, sin(x) - x/2. La méthode de Newton demande aussi f′(x). L’itération du point fixe demande une fonction g(x)."
   },
   "solver": {
     "heading": "Conditions initiales",

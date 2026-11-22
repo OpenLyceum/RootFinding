@@ -19,8 +19,7 @@
 // brand.js MUST be first; importing it runs the whole chain (init→assert→splash→brand) before main.
 import "./brand.js";
 
-import { QueryStringMachine } from "scenerystack/query-string-machine";
-import { onReadyToLaunch, PreferencesModel, Sim } from "scenerystack/sim";
+import { onReadyToLaunch, Sim } from "scenerystack/sim";
 import { Tandem } from "scenerystack/tandem";
 import { BisectionScreen } from "./bisection/BisectionScreen.js";
 import { BrentsMethodScreen } from "./brent/BrentsMethodScreen.js";
@@ -29,15 +28,12 @@ import { FixedPointIterationScreen } from "./fixed-point/FixedPointIterationScre
 import { StringManager } from "./i18n/StringManager.js";
 import { NewtonsMethodScreen } from "./newton/NewtonsMethodScreen.js";
 import { RootFindingPreferencesModel } from "./preferences/RootFindingPreferencesModel.js";
-import { RootFindingPreferencesNode } from "./preferences/RootFindingPreferencesNode.js";
+import rootFindingQueryParameters from "./preferences/rootFindingQueryParameters.js";
 import RootFindingColors from "./RootFindingColors.js";
 import { SecantScreen } from "./secant/SecantScreen.js";
 
 onReadyToLaunch(() => {
   const stringManager = StringManager.getInstance();
-
-  // Simulation-specific preferences; initial values come from rootFindingQueryParameters.
-  const simPreferences = new RootFindingPreferencesModel();
 
   const screens = [
     new BisectionScreen({
@@ -73,25 +69,7 @@ onReadyToLaunch(() => {
   ] as const;
 
   const sim = new Sim(stringManager.getTitleStringProperty(), [...screens], {
-    preferencesModel: new PreferencesModel({
-      visualOptions: {
-        // Adds a "Projector Mode" toggle in Preferences → Visual
-        supportsProjectorMode: true,
-        // Enables keyboard-navigation highlight outlines
-        supportsInteractiveHighlights: true,
-      },
-      simulationOptions: {
-        customPreferences: [
-          {
-            createContent: (tandem: Tandem) => new RootFindingPreferencesNode(simPreferences, tandem),
-          },
-        ],
-      },
-      localizationOptions: {
-        // Adds a language picker in Preferences → Language
-        supportsDynamicLocale: true,
-      },
-    }),
+    preferencesModel: new RootFindingPreferencesModel(),
 
     // Optional: fill in credits shown in Help → About
     credits: {
@@ -102,7 +80,7 @@ onReadyToLaunch(() => {
     },
   });
 
-  if (!(QueryStringMachine.containsKey("initialScreen") || QueryStringMachine.containsKey("screens"))) {
+  if (rootFindingQueryParameters.openBisectionByDefault) {
     sim.isConstructionCompleteProperty.lazyLink((complete) => {
       if (complete) {
         sim.selectedScreenProperty.value = screens[0];

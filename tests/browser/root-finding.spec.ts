@@ -59,3 +59,22 @@ test("all methods can be selected in portrait", async ({ page }) => {
     await expect(page.getByRole("article").getByText(/Approximating a root/)).toBeAttached();
   }
 });
+
+test("keyboard focus can enter the custom function syntax panel", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      errors.push(message.text());
+    }
+  });
+  await page.goto("/?ea");
+  await page.getByRole("button", { name: "Preferences", exact: true }).press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Preferences" });
+  await dialog.getByRole("tab", { name: "Overview", exact: true }).press("ArrowRight");
+  const syntax = dialog.getByRole("heading", { name: "Custom function syntax" });
+  await expect(syntax).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(dialog.getByText(/Supported functions are abs/)).toBeVisible();
+  expect(errors).toEqual([]);
+});
