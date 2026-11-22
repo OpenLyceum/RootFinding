@@ -55,6 +55,10 @@ const RootFindingColors = {
     default: "#2a514f",
     projector: "#d8eee6",
   }),
+  discardedBracketColorProperty: new ProfileColorProperty(RootFindingNamespace, "discardedBracket", {
+    default: "#473330",
+    projector: "#f3e2dd",
+  }),
   mutedColorProperty: new ProfileColorProperty(RootFindingNamespace, "muted", {
     default: "#a9c4ce",
     projector: "#405866",

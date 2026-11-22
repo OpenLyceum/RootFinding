@@ -26,6 +26,7 @@ import { RootFindingPanel } from "../RootFindingPanel.js";
 import { type AxisField, GraphViewport } from "./GraphViewport.js";
 import { createIterationGraph, formatNumber } from "./IterationGraph.js";
 import { RootFindingScreenSummaryContent } from "./RootFindingScreenSummaryContent.js";
+import { createStepExplanation, interpolate } from "./StepExplanation.js";
 
 type Label = TReadOnlyProperty<string>;
 const strings = () => StringManager.getInstance().getSolverStrings();
@@ -54,10 +55,6 @@ function button(name: Label, listener: () => void, width: number, primary = fals
     }),
     listener,
   });
-}
-
-function interpolate(pattern: string, values: Record<string, string>): string {
-  return pattern.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
 }
 
 function textEntry(
@@ -417,7 +414,7 @@ function playPanel(model: RootFindingModel): Node {
   const step = button(s.stepStringProperty, () => model.stepOnce(), 92);
   const restart = button(s.restartStringProperty, () => model.restart(), 102);
   const state = label("", 15, SETUP_WIDTH, true);
-  const stepDetail = label("", 13, SETUP_WIDTH);
+  const explanation = createStepExplanation(model);
   const statusKeys = [
     "ready",
     "working",
@@ -436,35 +433,34 @@ function playPanel(model: RootFindingModel): Node {
       model.runProperty,
       ...statusKeys.map((k) => s[`${k}StringProperty`]),
       ...kindKeys.map((k) => s[`${k}StringProperty`]),
-      s.detailStringProperty,
+      s.stepHeaderStringProperty,
     ],
     () => {
       const { history, status } = model.runProperty.value;
       const active = status === "ready" || status === "working";
       play.enabled = active;
       step.enabled = active;
-      state.string = s[`${status}StringProperty`].value;
+      const latest = history.at(-1);
+      state.string =
+        status === "working" && latest
+          ? interpolate(s.stepHeaderStringProperty.value, {
+              number: String(history.length),
+              kind: s[`${latest.kind}StringProperty`].value,
+            })
+          : s[`${status}StringProperty`].value;
       state.fill = active
         ? Colors.textColorProperty
         : status === "exact" || status === "converged"
           ? Colors.functionCurveColorProperty
           : Colors.errorColorProperty;
-      const latest = history.at(-1);
-      stepDetail.string = latest
-        ? interpolate(s.detailStringProperty.value, {
-            kind: s[`${latest.kind}StringProperty`].value,
-            x: formatNumber(latest.estimate.x),
-            residual: formatNumber(Math.abs(latest.estimate.y)),
-          })
-        : "";
     },
   );
   return new RootFindingPanel(
     new VBox({
       align: "left",
       spacing: 8,
-      children: [new HBox({ spacing: 8, children: [step, play, restart] }), state, stepDetail],
-      pdomOrder: [step, play, restart],
+      children: [new HBox({ spacing: 8, children: [step, play, restart] }), state, explanation],
+      pdomOrder: [step, play, restart, explanation],
     }),
   );
 }
@@ -504,7 +500,7 @@ export class RootFindingScreenView extends ScreenView {
       },
     );
     super({
-      layoutBounds: new Bounds2(0, 0, 1024, 674),
+      layoutBounds: new Bounds2(0, 0, 1024, 728),
       screenSummaryContent: new RootFindingScreenSummaryContent(description, details),
     });
 
@@ -532,7 +528,7 @@ export class RootFindingScreenView extends ScreenView {
     this.controls = new VBox({
       align: "left",
       spacing: 12,
-      children: [setupPanel(model, menuLayer), playPanel(model)],
+      children: [playPanel(model), setupPanel(model, menuLayer)],
     });
     this.resetAll = new ResetAllButton({
       ...FLAT_RESET_ALL_BUTTON_OPTIONS,
@@ -557,7 +553,7 @@ export class RootFindingScreenView extends ScreenView {
     this.header.top = 14;
     this.graph.left = margin;
     this.graph.top = 91;
-    this.controls.setScaleMagnitude(portrait ? 1.75 : 1);
+    this.controls.setScaleMagnitude(portrait ? 1.42 : 1);
     this.controls.left = portrait ? margin : this.graph.right + margin;
     this.controls.top = portrait ? this.graph.bottom + 12 : this.graph.top;
     this.history.left = margin;

@@ -2,7 +2,16 @@ import { ITERATION_LIMIT, isBracketed, type Method, type Problem, TOLERANCE } fr
 
 type Point = { x: number; y: number };
 type Bracket = readonly [Point, Point];
-type Proposal = { x: number; kind: StepKind; from?: Point; second?: Point; third?: Point };
+type BrentFallback = { candidate: number; reason: "outside" | "progress" | "tolerance" | "nonfinite" };
+type Proposal = {
+  x: number;
+  kind: StepKind;
+  from?: Point;
+  second?: Point;
+  third?: Point;
+  slope?: number;
+  fallback?: BrentFallback;
+};
 export type Status =
   | "ready"
   | "working"
@@ -20,6 +29,9 @@ export type Iteration = {
   kind: StepKind;
   size: number | null;
   bracket: Bracket | null;
+  previousBracket: Bracket | null;
+  slope: number | null;
+  fallback: BrentFallback | null;
   from: Point | null;
   second: Point | null;
   third: Point | null;
@@ -88,6 +100,9 @@ export class RootSolver {
         kind: "initial",
         size: null,
         bracket: null,
+        previousBracket: null,
+        slope: null,
+        fallback: null,
         from: null,
         second: null,
         third: null,
@@ -125,11 +140,19 @@ export class RootSolver {
     const bound = a.x * 0.75 + b.x * 0.25;
     const previousMovement = this.bisected ? Math.abs(b.x - c.x) : Math.abs(c.x - d.x);
     const inside = Math.min(bound, b.x) < interpolated && interpolated < Math.max(bound, b.x);
-    this.bisected = !inside || Math.abs(interpolated - b.x) >= previousMovement / 2 || previousMovement < TOLERANCE;
+    const insufficientProgress = Math.abs(interpolated - b.x) >= previousMovement / 2;
+    this.bisected = !inside || insufficientProgress || previousMovement < TOLERANCE;
     this.d = c;
     this.c = b;
     if (this.bisected) {
-      return { x: midpoint(a, b), kind: "midpoint" };
+      const reason = !Number.isFinite(interpolated)
+        ? "nonfinite"
+        : !inside
+          ? "outside"
+          : insufficientProgress
+            ? "progress"
+            : "tolerance";
+      return { x: midpoint(a, b), kind: "midpoint", fallback: { candidate: interpolated, reason } };
     }
     return quadratic
       ? { x: interpolated, kind: "inverseQuadratic", from: a, second: b, third: c }
@@ -154,7 +177,7 @@ export class RootSolver {
           this.status = Number.isFinite(slope) ? "zeroSlope" : "undefined";
           return null;
         }
-        return { x: b.x - b.y / slope, kind: "tangent", from: b };
+        return { x: b.x - b.y / slope, kind: "tangent", from: b, slope };
       }
       case "fixedPoint":
         return { x: this.problem.auxiliary?.(b.x) ?? NaN, kind: "cobweb", from: b };
@@ -207,13 +230,14 @@ export class RootSolver {
     if (!proposal) {
       return null;
     }
-    const { x, kind, from = null, second = null, third = null } = proposal;
+    const { x, kind, from = null, second = null, third = null, slope = null, fallback = null } = proposal;
     const estimate = this.evaluate(x);
     if (!(Number.isFinite(x) && Number.isFinite(estimate.y))) {
       this.status = "undefined";
       return null;
     }
     const { a, b } = this;
+    const previousBracket = this.bracket;
     const stationary = x === b.x || (this.bracket !== null && x === a.x);
     if (this.bracket) {
       this.retainBracket(estimate);
@@ -225,6 +249,6 @@ export class RootSolver {
     this.count++;
     this.status = this.determineStatus(estimate, size, stationary);
     this.last = b;
-    return { estimate, kind, size, bracket: this.bracket, from, second, third };
+    return { estimate, kind, size, bracket: this.bracket, previousBracket, from, second, third, slope, fallback };
   }
 }

@@ -7,7 +7,8 @@ Explore how six numerical methods approximate the zeros of a function.
 ## Features
 
 - Six interactive methods in order from Bisection to Brent’s Method.
-- Graphs that show brackets, tangents, chords, cobweb steps, and interpolation.
+- Annotated graphs show the starting points, the construction, and what changes at each step.
+- Step explanations substitute the current values into the method and explain the next estimate or retained bracket.
 - Examples of fast convergence, repeated roots, stalling, and oscillation.
 - Custom functions, derivatives, iteration maps, and starting values.
 - Step, run, and inspect a paged history of estimates, residuals, and step sizes.

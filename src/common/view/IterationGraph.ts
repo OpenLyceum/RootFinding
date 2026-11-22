@@ -3,6 +3,7 @@ import { Bounds2, toFixed } from "scenerystack/dot";
 import { Shape } from "scenerystack/kite";
 import { Node, Path, Rectangle, Text } from "scenerystack/scenery";
 import { PhetFont } from "scenerystack/scenery-phet";
+import { StringManager } from "../../i18n/StringManager.js";
 import Colors from "../../RootFindingColors.js";
 import {
   GRAPH_HEIGHT,
@@ -13,11 +14,9 @@ import {
   GRAPH_WIDTH,
 } from "../../RootFindingConstants.js";
 import type { Problem } from "../model/problems.js";
-import { isBracketed } from "../model/problems.js";
 import type { RootFindingModel } from "../model/RootFindingModel.js";
-import type { Iteration } from "../model/solver.js";
-
 import type { GraphBounds, GraphViewport } from "./GraphViewport.js";
+import { StepGraphOverlay } from "./StepGraphOverlay.js";
 
 const plot = new Bounds2(GRAPH_INSET_LEFT, GRAPH_PAD, GRAPH_WIDTH - GRAPH_PAD, GRAPH_HEIGHT - GRAPH_INSET_BOTTOM);
 const TICKS = 5;
@@ -57,72 +56,6 @@ function sampleCurve(
   return curveShape;
 }
 
-type Line = (ax: number, ay: number, bx: number, by: number) => void;
-type Marker = (x: number, y: number) => void;
-
-function drawInterpolation(row: Iteration, marker: Marker, line: Line): void {
-  const { from, second, third, estimate, kind } = row;
-  if (!from) {
-    return;
-  }
-  marker(from.x, from.y);
-  if (!second) {
-    line(from.x, from.y, estimate.x, 0);
-    return;
-  }
-  marker(second.x, second.y);
-  if (kind === "inverseQuadratic" && third) {
-    const low = Math.min(0, from.y, second.y, third.y);
-    const high = Math.max(0, from.y, second.y, third.y);
-    const inverseX = (y: number) =>
-      from.x * ((y - second.y) / (from.y - second.y)) * ((y - third.y) / (from.y - third.y)) +
-      second.x * ((y - from.y) / (second.y - from.y)) * ((y - third.y) / (second.y - third.y)) +
-      third.x * ((y - from.y) / (third.y - from.y)) * ((y - second.y) / (third.y - second.y));
-    for (let i = 0; i < 64; i++) {
-      const y1 = low + ((high - low) * i) / 64;
-      const y2 = low + ((high - low) * (i + 1)) / 64;
-      line(inverseX(y1), y1, inverseX(y2), y2);
-    }
-    marker(third.x, third.y);
-    return;
-  }
-  line(from.x, from.y, second.x, second.y);
-  if (estimate.x < Math.min(from.x, second.x) || estimate.x > Math.max(from.x, second.x)) {
-    const nearest = Math.abs(estimate.x - from.x) < Math.abs(estimate.x - second.x) ? from : second;
-    line(nearest.x, nearest.y, estimate.x, 0);
-  }
-}
-
-function drawConstruction(model: RootFindingModel, history: readonly Iteration[], marker: Marker, line: Line): void {
-  const fixed = model.method === "fixedPoint";
-  const last = history.at(-1);
-  if (!last) {
-    const { problem } = model.runProperty.value;
-    const evaluate = fixed ? problem.auxiliary : problem.f;
-    marker(problem.first, evaluate?.(problem.first) ?? NaN);
-    if (isBracketed(model.method) || model.method === "secant") {
-      marker(problem.second, problem.f(problem.second));
-    }
-    return;
-  }
-  if (fixed) {
-    for (const row of history.slice(-12)) {
-      if (row.from) {
-        const x = row.from.x;
-        const next = row.estimate.x;
-        line(x, x, x, next);
-        line(x, next, next, next);
-      }
-    }
-    marker(last.estimate.x, last.estimate.x);
-    return;
-  }
-  drawInterpolation(last, marker, line);
-  line(last.estimate.x, 0, last.estimate.x, last.estimate.y);
-  marker(last.estimate.x, 0);
-  marker(last.estimate.x, last.estimate.y);
-}
-
 function limitProjected(fraction: number): number {
   return Math.max(-30, Math.min(31, fraction));
 }
@@ -139,13 +72,11 @@ export function createIterationGraph(model: RootFindingModel, viewport: GraphVie
     fill: Colors.graphBackgroundColorProperty,
     stroke: Colors.panelBorderColorProperty,
   });
-  const bracket = new Path(null, { fill: Colors.bracketColorProperty });
+  const overlay = new StepGraphOverlay(plot);
   const grid = new Path(null, { stroke: Colors.graphGridColorProperty });
   const axes = new Path(null, { stroke: Colors.graphAxisColorProperty, lineWidth: 1.25 });
   const curve = new Path(null, { stroke: Colors.functionCurveColorProperty, lineWidth: 2.75 });
   const reference = new Path(null, { stroke: Colors.graphAxisColorProperty, lineDash: [5, 4], lineWidth: 1.4 });
-  const construction = new Path(null, { stroke: Colors.constructionColorProperty, lineWidth: 2.25 });
-  const points = new Path(null, { fill: Colors.constructionColorProperty });
   const ticks = Array.from(
     { length: TICKS * 2 },
     () =>
@@ -157,7 +88,7 @@ export function createIterationGraph(model: RootFindingModel, viewport: GraphVie
   );
   const plotLayer = new Node({
     clipArea: Shape.bounds(plot),
-    children: [bracket, grid, axes, reference, curve, construction, points],
+    children: [overlay.regionLayer, grid, axes, reference, curve, overlay.constructionLayer],
   });
   const graph = new Node({
     children: [
@@ -170,7 +101,7 @@ export function createIterationGraph(model: RootFindingModel, viewport: GraphVie
         font: new PhetFont(13),
         fill: Colors.textColorProperty,
       }),
-      new Text(fixed ? "g(x)" : "f(x)", {
+      new Text(fixed ? "g(x)     ·     y = x" : "f(x)", {
         left: GRAPH_INSET_LEFT,
         top: 2,
         font: new PhetFont(13),
@@ -225,35 +156,25 @@ export function createIterationGraph(model: RootFindingModel, viewport: GraphVie
     curve.shape = sampleCurve(fixed ? problem.auxiliary : problem.f, bounds, xView, yView);
   }
 
+  const strings = StringManager.getInstance().getSolverStrings();
   Multilink.multilink(
-    [model.runProperty, viewport.boundsProperty],
-    ({ problem, history, bracket: interval }, bounds) => {
-      if (problem !== sampledProblem || bounds !== sampledBounds) {
-        drawFunction(problem, bounds);
-        sampledProblem = problem;
+    [
+      model.runProperty,
+      viewport.boundsProperty,
+      strings.keptRegionStringProperty,
+      strings.discardedRegionStringProperty,
+      strings.rejectedPointStringProperty,
+    ],
+    (run, bounds) => {
+      if (run.problem !== sampledProblem || bounds !== sampledBounds) {
+        drawFunction(run.problem, bounds);
+        sampledProblem = run.problem;
         sampledBounds = bounds;
       }
       const { minX, maxX, minY, maxY } = bounds;
       const xView = (x: number) => plot.left + limitProjected((x - minX) / (maxX - minX)) * plot.width;
       const yView = (y: number) => plot.bottom - limitProjected((y - minY) / (maxY - minY)) * plot.height;
-      const x0 = interval ? xView(interval[0].x) : 0;
-      const x1 = interval ? xView(interval[1].x) : 0;
-      bracket.shape = interval ? Shape.rect(x0, plot.top, Math.max(0, x1 - x0), plot.height) : null;
-      const overlay = new Shape();
-      const markers = new Shape();
-      const marker = (x: number, y: number) => {
-        if (Number.isFinite(y)) {
-          markers.circle(xView(x), yView(y), 4.5);
-        }
-      };
-      const line = (ax: number, ay: number, bx: number, by: number) => {
-        if ([ax, ay, bx, by].every(Number.isFinite)) {
-          overlay.moveTo(xView(ax), yView(ay)).lineTo(xView(bx), yView(by));
-        }
-      };
-      drawConstruction(model, history, marker, line);
-      construction.shape = overlay;
-      points.shape = markers;
+      overlay.draw(model, run, xView, yView);
     },
   );
   return graph;

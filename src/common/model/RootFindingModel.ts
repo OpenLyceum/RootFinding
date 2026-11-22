@@ -12,7 +12,7 @@ import {
 } from "./problems.js";
 import { type Iteration, RootSolver, type Status } from "./solver.js";
 
-const SECONDS_PER_STEP = 0.55;
+const SECONDS_PER_STEP = 0.9;
 type Run = { problem: Problem; history: readonly Iteration[]; status: Status; bracket: RootSolver["bracket"] };
 
 export class RootFindingModel implements TModel {

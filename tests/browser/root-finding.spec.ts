@@ -141,3 +141,26 @@ test("open methods frame their latest construction", async ({ page }) => {
   expect(lower).toBeLessThan(1.5);
   expect(upper).toBeGreaterThan(1.52);
 });
+
+test("each method explains its construction using the current iteration", async ({ page }) => {
+  await page.goto("/?ea");
+  const article = page.getByRole("article");
+  const cases = [
+    ["Bisection", /Construct\. m = \(1 \+ 2\) \/ 2 ≈ 1\.5.*Keep \[1\.5, 2\] because the signs are opposite/],
+    ["Newton’s Method", /Slope f′\(xₙ\) ≈ 5\.75.*Follow the tangent to y = 0/],
+    ["False Position", /Follow the endpoint chord to y = 0.*Keep \[/],
+    ["Secant", /Use \(1, -2\) and \(2, 4\).*Follow the secant to y = 0/],
+    ["Fixed-Point Iteration", /Start on y = x.*Go up or down to g\(xₙ\).*then across to y = x/],
+    ["Brent’s Method", /Follow the secant to y = 0.*Keep \[/],
+  ] as const;
+  for (const [name, explanation] of cases) {
+    await page
+      .getByRole("navigation")
+      .getByRole("button", { name: `${name} Screen`, exact: true })
+      .press("Enter");
+    await article.getByRole("button", { name: "Step", exact: true }).press("Enter");
+    await expect(article.getByText(explanation)).toBeAttached();
+  }
+  await article.getByRole("button", { name: "Step", exact: true }).press("Enter");
+  await expect(article.getByText(/The third sample is c.*Fit x as a quadratic in y/)).toBeAttached();
+});

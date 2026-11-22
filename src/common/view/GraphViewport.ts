@@ -14,11 +14,22 @@ function calculateBounds(method: Method, run: Run): GraphBounds {
   const { bracket, history, problem } = run;
   const latest = history.at(-1);
   const seeds = [problem.first, problem.second];
-  const bracketXs = bracket ? bracket.map((point) => point.x) : [];
-  const recentXs = [latest?.from?.x, latest?.second?.x, latest?.estimate.x].filter(
+  const shownBracket = latest?.previousBracket ?? bracket;
+  const bracketXs = shownBracket?.map((point) => point.x) ?? [];
+  const recentXs = [latest?.from?.x, latest?.second?.x, latest?.third?.x, latest?.estimate.x].filter(
     (x): x is number => x !== undefined && Math.abs(x) <= GRAPH_LIMIT,
   );
-  const focus = isBracketed(method) && bracket ? bracketXs : recentXs;
+  const focus = isBracketed(method) && shownBracket ? [...bracketXs] : recentXs;
+  // The third Brent sample may be just outside the interval. Include it
+  // when it is local enough to reveal the construction without losing the bracket.
+  if (
+    latest?.third &&
+    shownBracket &&
+    latest.third.x >= shownBracket[0].x - (shownBracket[1].x - shownBracket[0].x) * 0.5 &&
+    latest.third.x <= shownBracket[1].x + (shownBracket[1].x - shownBracket[0].x) * 0.5
+  ) {
+    focus.push(latest.third.x);
+  }
   const values = focus.length > 0 ? focus : seeds;
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -27,7 +38,7 @@ function calculateBounds(method: Method, run: Run): GraphBounds {
   const previousWidth = previous ? previous[1].x - previous[0].x : Math.abs(problem.second - problem.first);
   const minSpan = Math.max(MIN_AUTO_X_SPAN, Math.max(Math.abs(min), Math.abs(max)) * MIN_RELATIVE_SPAN);
   const pad = latest
-    ? Math.max(minSpan / 2, width * 0.55, bracket && width === 0 ? previousWidth * 0.15 : 0)
+    ? Math.max(minSpan / 2, width * (shownBracket ? 0.19 : 0.55), bracket && width === 0 ? previousWidth * 0.15 : 0)
     : Math.max(1.25, width * 0.4);
   const minX = Math.max(-GRAPH_LIMIT, min - pad);
   const maxX = Math.min(GRAPH_LIMIT, max + pad);

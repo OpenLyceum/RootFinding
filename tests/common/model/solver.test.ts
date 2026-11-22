@@ -77,8 +77,11 @@ describe("numerical methods", () => {
     expect(bisection?.kind).toBe("midpoint");
     expect(bisection?.estimate.x).toBe(1.5);
     expect(bisection?.size).toBe(0.5);
+    expect(bisection?.previousBracket?.map(({ x }) => x)).toEqual([1, 2]);
+    expect(bisection?.bracket?.map(({ x }) => x)).toEqual([1.5, 2]);
     const newton = setup("newton").advance();
     expect(newton?.kind).toBe("tangent");
+    expect(newton?.slope).toBe(5.75);
     expect(newton?.estimate.x).toBeCloseTo(1.5 + 0.125 / 5.75, 12);
   });
 
@@ -93,6 +96,10 @@ describe("numerical methods", () => {
   it("uses both Brent interpolation methods and falls back to bisection", () => {
     const rows = [...run(setup("brent")), ...run(setup("brent", presetInputs("brent", "stall")))];
     expect(new Set(rows.map((row) => row.kind))).toEqual(new Set(["secant", "inverseQuadratic", "midpoint"]));
+    const fallback = rows.find((row) => row.fallback?.reason === "progress");
+    expect(fallback?.kind).toBe("midpoint");
+    expect(fallback?.fallback?.candidate).not.toBe(fallback?.estimate.x);
+    expect(fallback?.previousBracket).toHaveLength(2);
   });
 
   it("rejects an invalid bracket, accepts an exact endpoint, and stops at a discontinuity", () => {

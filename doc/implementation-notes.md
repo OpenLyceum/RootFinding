@@ -16,6 +16,10 @@ ranges stay fixed as the solver advances. The plot refreshes its function
 samples when the problem or viewport changes. Values outside the graph's
 supported range remain available in the iteration history.
 
+Iteration records retain their input bracket, Newton tangent slope, and any
+rejected Brent proposal. The annotated plot and the step explanation share
+these records so the construction and the depicted decision use the same data.
+
 The app uses the template’s bootstrap, color profiles, translations, and PWA
 build. Model tests cover the six numerical methods; Chromium tests exercise the
 normal screen and keyboard entry points.
