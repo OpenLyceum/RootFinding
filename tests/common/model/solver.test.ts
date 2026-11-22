@@ -5,13 +5,21 @@ import {
   ITERATION_LIMIT,
   isBracketed,
   type Method,
-  methods,
   presetInputs,
   TOLERANCE,
   validateInputs,
 } from "../../../src/common/model/problems.js";
 import { RootFindingModel } from "../../../src/common/model/RootFindingModel.js";
 import { type Iteration, RootSolver } from "../../../src/common/model/solver.js";
+
+const methods = [
+  "bisection",
+  "newton",
+  "falsePosition",
+  "secant",
+  "fixedPoint",
+  "brent",
+] as const satisfies readonly Method[];
 
 function setup(method: Method, inputs: Inputs = presetInputs(method, "cubic")): RootSolver {
   const result = validateInputs(method, inputs);

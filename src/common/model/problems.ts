@@ -1,8 +1,7 @@
 import type { Expression } from "./expressions.js";
 import { compileExpression } from "./expressions.js";
 
-export const methods = ["bisection", "newton", "falsePosition", "secant", "fixedPoint", "brent"] as const;
-export type Method = (typeof methods)[number];
+export type Method = "bisection" | "newton" | "falsePosition" | "secant" | "fixedPoint" | "brent";
 export type Field = "function" | "auxiliary" | "first" | "second";
 export type Inputs = Record<Field, string>;
 export type Problem = { f: Expression; auxiliary: Expression | null; first: number; second: number };
