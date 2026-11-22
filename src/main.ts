@@ -19,30 +19,60 @@
 // brand.js MUST be first; importing it runs the whole chain (init→assert→splash→brand) before main.
 import "./brand.js";
 
+import { QueryStringMachine } from "scenerystack/query-string-machine";
 import { onReadyToLaunch, PreferencesModel, Sim } from "scenerystack/sim";
 import { Tandem } from "scenerystack/tandem";
+import { BisectionScreen } from "./bisection/BisectionScreen.js";
+import { BrentsMethodScreen } from "./brent/BrentsMethodScreen.js";
+import { FalsePositionScreen } from "./false-position/FalsePositionScreen.js";
+import { FixedPointIterationScreen } from "./fixed-point/FixedPointIterationScreen.js";
 import { StringManager } from "./i18n/StringManager.js";
-import { SimPreferencesModel } from "./preferences/SimPreferencesModel.js";
-import { SimPreferencesNode } from "./preferences/SimPreferencesNode.js";
-import SimColors from "./SimColors.js";
-import { SimScreen } from "./sim-screen/SimScreen.js";
+import { NewtonsMethodScreen } from "./newton/NewtonsMethodScreen.js";
+import { RootFindingPreferencesModel } from "./preferences/RootFindingPreferencesModel.js";
+import { RootFindingPreferencesNode } from "./preferences/RootFindingPreferencesNode.js";
+import RootFindingColors from "./RootFindingColors.js";
+import { SecantScreen } from "./secant/SecantScreen.js";
 
 onReadyToLaunch(() => {
   const stringManager = StringManager.getInstance();
 
-  // Simulation-specific preferences; initial values come from simQueryParameters.
-  const simPreferences = new SimPreferencesModel(Tandem.ROOT.createTandem("preferences"));
+  // Simulation-specific preferences; initial values come from rootFindingQueryParameters.
+  const simPreferences = new RootFindingPreferencesModel();
 
   const screens = [
-    new SimScreen({
-      // The screen name Property updates automatically when the locale changes
-      name: stringManager.getScreenNames().simStringProperty,
-      tandem: Tandem.ROOT.createTandem("simScreen"),
-      backgroundColorProperty: SimColors.backgroundColorProperty,
+    new BisectionScreen({
+      name: stringManager.getScreenNames().bisectionStringProperty,
+      tandem: Tandem.ROOT.createTandem("bisectionScreen"),
+      backgroundColorProperty: RootFindingColors.backgroundColorProperty,
     }),
-  ];
+    new NewtonsMethodScreen({
+      name: stringManager.getScreenNames().newtonStringProperty,
+      tandem: Tandem.ROOT.createTandem("newtonScreen"),
+      backgroundColorProperty: RootFindingColors.backgroundColorProperty,
+    }),
+    new FalsePositionScreen({
+      name: stringManager.getScreenNames().falsePositionStringProperty,
+      tandem: Tandem.ROOT.createTandem("falsePositionScreen"),
+      backgroundColorProperty: RootFindingColors.backgroundColorProperty,
+    }),
+    new SecantScreen({
+      name: stringManager.getScreenNames().secantStringProperty,
+      tandem: Tandem.ROOT.createTandem("secantScreen"),
+      backgroundColorProperty: RootFindingColors.backgroundColorProperty,
+    }),
+    new FixedPointIterationScreen({
+      name: stringManager.getScreenNames().fixedPointStringProperty,
+      tandem: Tandem.ROOT.createTandem("fixedPointScreen"),
+      backgroundColorProperty: RootFindingColors.backgroundColorProperty,
+    }),
+    new BrentsMethodScreen({
+      name: stringManager.getScreenNames().brentStringProperty,
+      tandem: Tandem.ROOT.createTandem("brentScreen"),
+      backgroundColorProperty: RootFindingColors.backgroundColorProperty,
+    }),
+  ] as const;
 
-  const sim = new Sim(stringManager.getTitleStringProperty(), screens, {
+  const sim = new Sim(stringManager.getTitleStringProperty(), [...screens], {
     preferencesModel: new PreferencesModel({
       visualOptions: {
         // Adds a "Projector Mode" toggle in Preferences → Visual
@@ -53,7 +83,7 @@ onReadyToLaunch(() => {
       simulationOptions: {
         customPreferences: [
           {
-            createContent: (tandem: Tandem) => new SimPreferencesNode(simPreferences, tandem),
+            createContent: (tandem: Tandem) => new RootFindingPreferencesNode(simPreferences, tandem),
           },
         ],
       },
@@ -72,5 +102,12 @@ onReadyToLaunch(() => {
     },
   });
 
+  if (!(QueryStringMachine.containsKey("initialScreen") || QueryStringMachine.containsKey("screens"))) {
+    sim.isConstructionCompleteProperty.lazyLink((complete) => {
+      if (complete) {
+        sim.selectedScreenProperty.value = screens[0];
+      }
+    });
+  }
   sim.start();
 });

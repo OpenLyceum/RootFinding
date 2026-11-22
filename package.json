@@ -1,16 +1,15 @@
 {
-  "name": "scenerystack-template",
+  "name": "root-finding",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "GitHub template for OpenLyceum SceneryStack sims (rename + scaffold-screens for one or N screens).",
+  "description": "Explore how six numerical methods approximate the zeros of a function.",
   "license": "AGPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/OpenLyceum/SceneryStackTemplate.git"
+    "url": "https://github.com/OpenLyceum/RootFinding.git"
   },
   "keywords": [
-    "template",
     "simulation",
     "SceneryStack",
     "interactive",
@@ -41,8 +40,6 @@
     "test:soak:headless": "vitest run --config vitest.soak.config.ts",
     "test:soak:browser": "npx playwright test tests/soak/browser.spec.ts",
     "icons": "node scripts/generate-icons.ts",
-    "rename": "node scripts/rename-sim.ts",
-    "scaffold-screens": "node scripts/scaffold-screens.ts",
     "clean": "rm -rf dist",
     "prepare": "test \"$(git rev-parse --show-toplevel 2>/dev/null)\" = \"$PWD\" && git config core.hooksPath .githooks || true",
     "knip": "knip",

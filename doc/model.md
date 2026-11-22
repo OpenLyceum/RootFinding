@@ -1,50 +1,35 @@
-# Model - SceneryStack Template
+# Model — Root Finding
 
-This document describes the model (the underlying physics, math, and behavior) for the simulation, in
-terms appropriate for an educator. It is the companion to
-[implementation-notes.md](./implementation-notes.md), which targets developers.
+A root is an x-value for which f(x) = 0. Start on the common cubic across
+the six screens to compare constructions and the number of iterations.
 
-> **Replace this entire file when forking.** The template ships with no domain physics — only the
-> section structure below. Real OpenLyceum sims (e.g. Stern Gerlach, Light Propagation) fill each
-> section with equations, ranges, and simplifications verified against their model code.
+## Bracketing methods
 
-## Overview
+- Bisection takes the midpoint and keeps the half with opposite endpoint signs.
+  For a continuous f, each step halves the width of an interval containing a root.
+- False Position takes the x-intercept of the endpoint chord and keeps a sign
+  change. One endpoint may change very slowly or stay fixed. Try the preset
+  x^10 − 1 over [0, 2].
+- Brent’s Method tries secant or inverse quadratic interpolation. It uses
+  bisection when the proposed interpolation fails its progress criteria.
+  See [Brent’s original algorithm](https://maths-people.anu.edu.au/~brent/pub/pub005.html).
 
-*One or two paragraphs describing what the simulation models and the key ideas a student should take
-away. Write for a teacher, not a programmer — avoid code and class names.*
+## Open methods
 
-**Example (do not ship):** "The simulation models a block sliding on a ramp with adjustable friction
-and angle. Students see how the component of gravity parallel to the surface sets acceleration and
-how static vs kinetic friction limits motion."
+- Newton iterates xₙ₊₁ = xₙ − f(xₙ)/f′(xₙ). Near a simple smooth root it can
+  converge quadratically. A flat tangent, repeated root, or poor guess can
+  produce a failure, slow convergence, or a cycle.
+- Secant estimates the slope from the last two function values. Under the
+  usual smoothness assumptions near a simple root, its order is about 1.618.
+- Fixed-Point Iteration uses xₙ₊₁ = g(xₙ). A fixed point must also solve the
+  supplied f(x) = 0. Nearby guesses tend to converge to an attracting fixed point
+  when the magnitude of g′ is less than one in its neighborhood.
 
-The template's `SimModel` is an empty coordinator — replace it with real state and a `step(dt)` /
-`reset()` that implement your physics.
+## Stopping
 
-## Quantities and units
-
-*List the primary modeled quantities, their symbols, units (SI where applicable), and control ranges.
-Mirror the ranges enforced in your `*Constants.ts` or model `Range` options.*
-
-| Quantity | Symbol | Units | Range |
-|---|---|---|---|
-| *(example)* time | t | s | 0 – ∞ |
-| *(example)* mass | m | kg | 0.1 – 5.0 |
-
-## Governing equations
-
-*State the equations or rules that drive the model, with a sentence explaining each. Use a smaller
-fixed time step than the screen default if the integration requires it; the model makes no assumption
-about frame rate.*
-
-**Example (do not ship):** For a damped spring, m·a = −k·x − b·v (+ gravity if applicable).
-
-## Simplifications and assumptions
-
-*Note anything intentionally idealized or omitted relative to the real-world phenomenon (e.g. no air
-resistance, point masses, instantaneous response), so educators can set expectations.*
-
-**Example (do not ship):** "Massless spring; linear damping only; motion confined to one dimension."
-
-## References
-
-*Optional: textbook sections, papers, or standards the model is based on.*
+A zero is accepted immediately, with Fixed-Point also requiring g(x) = x.
+Approximate convergence requires a residual at most 10⁻⁶ and a bracket width
+or change in x at most 10⁻⁶. Fixed-Point also checks its map at the estimate.
+Runs stop after 100 iterations or earlier if they encounter an unusable value
+or stop making progress. All calculations use floating-point arithmetic.
+A sign change alone gives a root guarantee only when f is continuous across it.

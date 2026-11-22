@@ -12,15 +12,23 @@
 
 import { StringProperty } from "scenerystack/axon";
 import { Tandem } from "scenerystack/tandem";
-// seed:soak-imports:start
-import SimColors from "../../src/SimColors.js";
-import { SimScreen } from "../../src/sim-screen/SimScreen.js";
-// seed:soak-imports:end
+import { BisectionScreen } from "../../src/bisection/BisectionScreen.js";
+import { BrentsMethodScreen } from "../../src/brent/BrentsMethodScreen.js";
+import { FalsePositionScreen } from "../../src/false-position/FalsePositionScreen.js";
+import { FixedPointIterationScreen } from "../../src/fixed-point/FixedPointIterationScreen.js";
+import { NewtonsMethodScreen } from "../../src/newton/NewtonsMethodScreen.js";
+import RootFindingColors from "../../src/RootFindingColors.js";
+import { SecantScreen } from "../../src/secant/SecantScreen.js";
 import { describeHeadlessSoak } from "../helpers/headlessSoak.js";
 
 describeHeadlessSoak({
-  // seed:soak-screens:start
-  screens: () => [new SimScreen({ name: new StringProperty("Sim"), tandem: Tandem.OPT_OUT })],
-  tracked: () => ({ SimColors }),
-  // seed:soak-screens:end
+  screens: () => [
+    new BisectionScreen({ name: new StringProperty("Bisection"), tandem: Tandem.OPT_OUT }),
+    new NewtonsMethodScreen({ name: new StringProperty("Newton’s Method"), tandem: Tandem.OPT_OUT }),
+    new FalsePositionScreen({ name: new StringProperty("False Position"), tandem: Tandem.OPT_OUT }),
+    new SecantScreen({ name: new StringProperty("Secant"), tandem: Tandem.OPT_OUT }),
+    new FixedPointIterationScreen({ name: new StringProperty("Fixed-Point Iteration"), tandem: Tandem.OPT_OUT }),
+    new BrentsMethodScreen({ name: new StringProperty("Brent’s Method"), tandem: Tandem.OPT_OUT }),
+  ],
+  tracked: () => ({ RootFindingColors }),
 });

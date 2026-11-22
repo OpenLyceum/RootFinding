@@ -1,5 +1,5 @@
 /**
- * SimConstants.ts
+ * RootFindingConstants.ts
  *
  * Central repository for every named numeric constant used across the
  * simulation. Bare numbers that carry semantic meaning (sizes, margins,
@@ -11,13 +11,13 @@
  *  - Physics / model values use SI units (metres, seconds, kilograms, …);
  *    note the unit in a comment on each value.
  *  - Layout / chrome values are in screen pixels.
- *  - Colour strings live in SimColors.ts, not here.
+ *  - Colour strings live in RootFindingColors.ts, not here.
  *  - Computed expressions (e.g. `2 * Math.PI`) may stay inline.
  *
  * Remove the example constants below and replace them with the sim's own.
  */
 
-import SimNamespace from "./SimNamespace.js";
+import RootFindingNamespace from "./RootFindingNamespace.js";
 
 // ── Layout / chrome (screen pixels) ───────────────────────────────────────────
 
@@ -34,7 +34,17 @@ export const PANEL_CORNER_RADIUS = 6;
 
 // Example: export const GRAVITY_MPS2 = 9.81; // m/s²
 
-SimNamespace.register("SimConstants", {
+RootFindingNamespace.register("RootFindingConstants", {
   SCREEN_VIEW_MARGIN,
   PANEL_CORNER_RADIUS,
 });
+
+export const GRAPH_WIDTH = 626;
+export const GRAPH_HEIGHT = 320;
+export const GRAPH_INSET_LEFT = 58;
+export const GRAPH_INSET_BOTTOM = 35;
+export const GRAPH_PAD = 16;
+export const GRAPH_SAMPLES = 320;
+export const SETUP_WIDTH = 306;
+export const HISTORY_ROWS = 5;
+export const FIELD_HEIGHT = 32;

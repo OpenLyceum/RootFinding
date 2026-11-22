@@ -1,8 +1,8 @@
 {
   "$comment": "Per-sim build settings, read and validated by vite.config.ts (template-owned). Unknown keys or bad values fail the build. See AGENTS.md → Build configuration.",
-  "title": "SceneryStack Template",
-  "shortName": "SimTemplate",
-  "themeColor": "#1a1a2e",
+  "title": "Root Finding",
+  "shortName": "RootFinding",
+  "themeColor": "#0c1722",
   "backgroundColor": "#000000",
   "allowPermissions": [],
   "connectSrc": [],
