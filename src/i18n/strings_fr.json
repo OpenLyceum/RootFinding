@@ -83,6 +83,16 @@
     "bracketDetail": "Intervalle conservé [{{a}}, {{b}}].",
     "formulaDetail": "Fonction actuelle {{formula}}.",
     "a11yControls": "Choisissez un exemple ou modifiez les expressions et les valeurs initiales. Utilisez Un pas pour une seule itération.",
-    "a11yHint": "Essayez plusieurs pas et lisez les estimations dans l’historique."
+    "a11yHint": "Essayez plusieurs pas et lisez les estimations dans l’historique.",
+    "autoZoom": "Zoom auto",
+    "minX": "x minimum",
+    "maxX": "x maximum",
+    "minY": "y minimum",
+    "maxY": "y maximum",
+    "applyAxes": "Appliquer les axes",
+    "axesApplyHelp": "Entrée ou Appliquer les axes définit les bornes du graphique.",
+    "autoAxesHint": "Modifiez une borne pour régler la vue manuellement.",
+    "manualAxesHint": "Vue manuelle. Activez le zoom auto pour suivre l’itération.",
+    "invalidAxes": "Saisissez des bornes croissantes entre −10¹² et 10¹²."
   }
 }

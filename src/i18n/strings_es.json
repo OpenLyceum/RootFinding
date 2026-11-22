@@ -83,6 +83,16 @@
     "bracketDetail": "Intervalo conservado [{{a}}, {{b}}].",
     "formulaDetail": "Función actual {{formula}}.",
     "a11yControls": "Elija un ejemplo o edite las expresiones y los valores iniciales. Use Un paso para una sola iteración.",
-    "a11yHint": "Pruebe varios pasos y lea las estimaciones en el historial."
+    "a11yHint": "Pruebe varios pasos y lea las estimaciones en el historial.",
+    "autoZoom": "Zoom auto",
+    "minX": "x mínimo",
+    "maxX": "x máximo",
+    "minY": "y mínimo",
+    "maxY": "y máximo",
+    "applyAxes": "Aplicar ejes",
+    "axesApplyHelp": "Intro o Aplicar ejes fija los límites del gráfico.",
+    "autoAxesHint": "Edite un límite para ajustar la vista manualmente.",
+    "manualAxesHint": "Vista manual. Active el zoom auto para seguir la iteración.",
+    "invalidAxes": "Introduzca límites crecientes entre −10¹² y 10¹²."
   }
 }

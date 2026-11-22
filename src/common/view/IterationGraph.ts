@@ -1,3 +1,4 @@
+import { Multilink } from "scenerystack/axon";
 import { Bounds2, toFixed } from "scenerystack/dot";
 import { Shape } from "scenerystack/kite";
 import { Node, Path, Rectangle, Text } from "scenerystack/scenery";
@@ -16,6 +17,8 @@ import { isBracketed } from "../model/problems.js";
 import type { RootFindingModel } from "../model/RootFindingModel.js";
 import type { Iteration } from "../model/solver.js";
 
+import type { GraphBounds, GraphViewport } from "./GraphViewport.js";
+
 const plot = new Bounds2(GRAPH_INSET_LEFT, GRAPH_PAD, GRAPH_WIDTH - GRAPH_PAD, GRAPH_HEIGHT - GRAPH_INSET_BOTTOM);
 const TICKS = 5;
 
@@ -29,22 +32,22 @@ export function formatNumber(value: number): string {
 
 function sampleCurve(
   functionToPlot: Problem["auxiliary"],
-  xMin: number,
-  xMax: number,
-  yMax: number,
+  bounds: GraphBounds,
   xView: (x: number) => number,
   yView: (y: number) => number,
 ): Shape {
+  const { minX, maxX, minY, maxY } = bounds;
+  const ySpan = maxY - minY;
   const curveShape = new Shape();
   let previous: number | null = null;
   for (let i = 0; functionToPlot && i <= GRAPH_SAMPLES; i++) {
-    const x = xMin + ((xMax - xMin) * i) / GRAPH_SAMPLES;
+    const x = minX + ((maxX - minX) * i) / GRAPH_SAMPLES;
     const y = functionToPlot(x);
-    if (!Number.isFinite(y) || Math.abs(y / yMax) > 24) {
+    if (!Number.isFinite(y) || Math.abs((y - minY) / ySpan) > 24) {
       previous = null;
       continue;
     }
-    if (previous === null || Math.abs(y - previous) / yMax > 3) {
+    if (previous === null || Math.abs(y - previous) / ySpan > 1.5) {
       curveShape.moveTo(xView(x), yView(y));
     } else {
       curveShape.lineTo(xView(x), yView(y));
@@ -120,7 +123,16 @@ function drawConstruction(model: RootFindingModel, history: readonly Iteration[]
   marker(last.estimate.x, last.estimate.y);
 }
 
-export function createIterationGraph(model: RootFindingModel): Node {
+function limitProjected(fraction: number): number {
+  return Math.max(-30, Math.min(31, fraction));
+}
+
+function formatTick(value: number, spacing: number): string {
+  const digits = Math.ceil(Math.log10(Math.max(Math.abs(value), spacing) / spacing)) + 3;
+  return String(Number(value.toPrecision(Math.min(17, digits))));
+}
+
+export function createIterationGraph(model: RootFindingModel, viewport: GraphViewport): Node {
   const fixed = model.method === "fixedPoint";
   const fill = new Rectangle(0, 0, GRAPH_WIDTH, GRAPH_HEIGHT, {
     cornerRadius: 8,
@@ -154,41 +166,32 @@ export function createIterationGraph(model: RootFindingModel): Node {
       ...ticks,
       new Text("x", {
         right: GRAPH_WIDTH - 8,
-        centerY: plot.centerY - 12,
+        top: GRAPH_HEIGHT - 16,
         font: new PhetFont(13),
         fill: Colors.textColorProperty,
       }),
       new Text(fixed ? "g(x)" : "f(x)", {
-        left: 10,
-        top: 4,
+        left: GRAPH_INSET_LEFT,
+        top: 2,
         font: new PhetFont(13),
         fill: Colors.functionCurveColorProperty,
       }),
     ],
   });
-  let sampledProblem: typeof model.runProperty.value.problem | null = null;
-  let xMin = 0;
-  let xMax = 0;
-  let yMax = 0;
-  function drawFunction(problem: Problem): void {
-    const seeds = [problem.first, problem.second];
-    const seedMin = Math.min(...seeds);
-    const seedMax = Math.max(...seeds);
-    const margin = Math.max(1.25, (seedMax - seedMin) * 0.4);
-    xMin = seedMin - margin;
-    xMax = seedMax + margin;
-    const heights = seeds
-      .map((x) => Math.abs(fixed ? (problem.auxiliary?.(x) ?? NaN) : problem.f(x)))
-      .filter(Number.isFinite);
-    yMax = Math.max(2, ...heights, ...(fixed ? seeds.map(Math.abs) : [])) * 1.2;
-    yMax = Math.min(1e12, yMax);
-    const xView = (x: number) => plot.left + ((x - xMin) / (xMax - xMin)) * plot.width;
-    const yView = (y: number) => plot.centerY - ((y / yMax) * plot.height) / 2;
+  let sampledProblem: Problem | null = null;
+  let sampledBounds: GraphBounds | null = null;
+
+  function drawFunction(problem: Problem, bounds: GraphBounds): void {
+    const { minX, maxX, minY, maxY } = bounds;
+    const xSpan = maxX - minX;
+    const ySpan = maxY - minY;
+    const xView = (x: number) => plot.left + ((x - minX) / xSpan) * plot.width;
+    const yView = (y: number) => plot.bottom - ((y - minY) / ySpan) * plot.height;
     const gridShape = new Shape();
     for (let i = 0; i < TICKS; i++) {
       const fraction = i / (TICKS - 1);
-      const x = xMin + fraction * (xMax - xMin);
-      const y = yMax - fraction * 2 * yMax;
+      const x = minX + fraction * xSpan;
+      const y = maxY - fraction * ySpan;
       const xPixel = xView(x);
       const yPixel = yView(y);
       gridShape.moveTo(xPixel, plot.top).lineTo(xPixel, plot.bottom);
@@ -196,49 +199,62 @@ export function createIterationGraph(model: RootFindingModel): Node {
       const xTick = ticks[i];
       const yTick = ticks[i + TICKS];
       if (xTick && yTick) {
-        xTick.string = formatNumber(x);
-        xTick.centerX = xPixel;
+        xTick.string = formatTick(x, xSpan / (TICKS - 1));
+        xTick.centerX = Math.min(GRAPH_WIDTH - xTick.width / 2 - 4, xPixel);
         xTick.top = plot.bottom + 6;
-        yTick.string = formatNumber(y);
+        yTick.string = formatTick(y, ySpan / (TICKS - 1));
         yTick.right = plot.left - 6;
         yTick.centerY = yPixel;
       }
     }
     grid.shape = gridShape;
-    const axesShape = new Shape().moveTo(plot.left, yView(0)).lineTo(plot.right, yView(0));
-    if (xMin <= 0 && xMax >= 0) {
+    const axesShape = new Shape();
+    if (minY <= 0 && maxY >= 0) {
+      axesShape.moveTo(plot.left, yView(0)).lineTo(plot.right, yView(0));
+    }
+    if (minX <= 0 && maxX >= 0) {
       axesShape.moveTo(xView(0), plot.top).lineTo(xView(0), plot.bottom);
     }
     axes.shape = axesShape;
-    reference.shape = fixed ? new Shape().moveTo(xView(xMin), yView(xMin)).lineTo(xView(xMax), yView(xMax)) : null;
-    curve.shape = sampleCurve(fixed ? problem.auxiliary : problem.f, xMin, xMax, yMax, xView, yView);
+    const diagonalLow = Math.max(minX, minY);
+    const diagonalHigh = Math.min(maxX, maxY);
+    reference.shape =
+      fixed && diagonalLow < diagonalHigh
+        ? new Shape().moveTo(xView(diagonalLow), yView(diagonalLow)).lineTo(xView(diagonalHigh), yView(diagonalHigh))
+        : null;
+    curve.shape = sampleCurve(fixed ? problem.auxiliary : problem.f, bounds, xView, yView);
   }
 
-  model.runProperty.link(({ problem, history, bracket: interval }) => {
-    if (problem !== sampledProblem) {
-      drawFunction(problem);
-      sampledProblem = problem;
-    }
-    const xView = (x: number) => plot.left + Math.max(-30, Math.min(31, (x - xMin) / (xMax - xMin))) * plot.width;
-    const yView = (y: number) => plot.centerY - (Math.max(-30, Math.min(30, y / yMax)) * plot.height) / 2;
-    const x0 = interval ? xView(interval[0].x) : 0;
-    const x1 = interval ? xView(interval[1].x) : 0;
-    bracket.shape = interval ? Shape.rect(x0, plot.top, Math.max(0, x1 - x0), plot.height) : null;
-    const overlay = new Shape();
-    const markers = new Shape();
-    const marker = (x: number, y: number) => {
-      if (Number.isFinite(y)) {
-        markers.circle(xView(x), yView(y), 4.5);
+  Multilink.multilink(
+    [model.runProperty, viewport.boundsProperty],
+    ({ problem, history, bracket: interval }, bounds) => {
+      if (problem !== sampledProblem || bounds !== sampledBounds) {
+        drawFunction(problem, bounds);
+        sampledProblem = problem;
+        sampledBounds = bounds;
       }
-    };
-    const line = (ax: number, ay: number, bx: number, by: number) => {
-      if ([ax, ay, bx, by].every(Number.isFinite)) {
-        overlay.moveTo(xView(ax), yView(ay)).lineTo(xView(bx), yView(by));
-      }
-    };
-    drawConstruction(model, history, marker, line);
-    construction.shape = overlay;
-    points.shape = markers;
-  });
+      const { minX, maxX, minY, maxY } = bounds;
+      const xView = (x: number) => plot.left + limitProjected((x - minX) / (maxX - minX)) * plot.width;
+      const yView = (y: number) => plot.bottom - limitProjected((y - minY) / (maxY - minY)) * plot.height;
+      const x0 = interval ? xView(interval[0].x) : 0;
+      const x1 = interval ? xView(interval[1].x) : 0;
+      bracket.shape = interval ? Shape.rect(x0, plot.top, Math.max(0, x1 - x0), plot.height) : null;
+      const overlay = new Shape();
+      const markers = new Shape();
+      const marker = (x: number, y: number) => {
+        if (Number.isFinite(y)) {
+          markers.circle(xView(x), yView(y), 4.5);
+        }
+      };
+      const line = (ax: number, ay: number, bx: number, by: number) => {
+        if ([ax, ay, bx, by].every(Number.isFinite)) {
+          overlay.moveTo(xView(ax), yView(ay)).lineTo(xView(bx), yView(by));
+        }
+      };
+      drawConstruction(model, history, marker, line);
+      construction.shape = overlay;
+      points.shape = markers;
+    },
+  );
   return graph;
 }

@@ -83,6 +83,16 @@
     "bracketDetail": "Retained bracket [{{a}}, {{b}}].",
     "formulaDetail": "Current function {{formula}}.",
     "a11yControls": "Choose an example or edit its expressions and starting values. Use Step for a single iteration.",
-    "a11yHint": "Try several steps and read the estimates in the history."
+    "a11yHint": "Try several steps and read the estimates in the history.",
+    "autoZoom": "Auto zoom",
+    "minX": "x minimum",
+    "maxX": "x maximum",
+    "minY": "y minimum",
+    "maxY": "y maximum",
+    "applyAxes": "Apply axes",
+    "axesApplyHelp": "Enter or Apply axes sets the graph bounds.",
+    "autoAxesHint": "Edit a bound to set a manual view.",
+    "manualAxesHint": "Manual view. Turn on Auto zoom to follow the iteration.",
+    "invalidAxes": "Enter increasing bounds between −10¹² and 10¹²."
   }
 }

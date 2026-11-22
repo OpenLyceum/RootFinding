@@ -11,6 +11,7 @@ Explore how six numerical methods approximate the zeros of a function.
 - Examples of fast convergence, repeated roots, stalling, and oscillation.
 - Custom functions, derivatives, iteration maps, and starting values.
 - Step, run, and inspect a paged history of estimates, residuals, and step sizes.
+- Auto zoom follows the iteration. Enter x- and y-axis bounds for a fixed view.
 - Keyboard controls, English, French and Spanish, projector mode, and an offline-capable PWA.
 
 ## Quick Start

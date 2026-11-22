@@ -78,3 +78,66 @@ test("keyboard focus can enter the custom function syntax panel", async ({ page 
   await expect(dialog.getByText(/Supported functions are abs/)).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test("automatic zoom follows the bracket and manual bounds stay put", async ({ page }) => {
+  await page.goto("/?ea");
+  const article = page.getByRole("article");
+  const step = article.getByRole("button", { name: "Step", exact: true });
+  const auto = article.getByRole("checkbox", { name: "Auto zoom" });
+  const minX = article.getByRole("textbox", { name: "x minimum" });
+  const maxX = article.getByRole("textbox", { name: "x maximum" });
+  const minY = article.getByRole("textbox", { name: "y minimum" });
+  const maxY = article.getByRole("textbox", { name: "y maximum" });
+  await expect(auto).toBeChecked();
+  const initialWidth = Number(await maxX.inputValue()) - Number(await minX.inputValue());
+  const initialHeight = Number(await maxY.inputValue()) - Number(await minY.inputValue());
+
+  for (let i = 0; i < 4; i++) {
+    await step.press("Enter");
+  }
+  expect(Number(await maxX.inputValue()) - Number(await minX.inputValue())).toBeLessThan(initialWidth / 8);
+  expect(Number(await maxY.inputValue()) - Number(await minY.inputValue())).toBeLessThan(initialHeight / 4);
+
+  const previousMaxX = await maxX.inputValue();
+  await minX.fill("2");
+  await minX.press("Enter");
+  await expect(auto).not.toBeChecked();
+  await expect(minX).toHaveAttribute("aria-invalid", "true");
+  await expect(maxX).toHaveValue(previousMaxX);
+
+  await minX.fill("-2");
+  await maxX.fill("3");
+  await minY.fill("-1");
+  await maxY.fill("4");
+  await article.getByRole("button", { name: "Apply axes" }).press("Enter");
+  await expect(minX).toHaveAttribute("aria-invalid", "false");
+  await step.press("Enter");
+  await expect(minX).toHaveValue("-2");
+  await expect(maxX).toHaveValue("3");
+  await expect(minY).toHaveValue("-1");
+  await expect(maxY).toHaveValue("4");
+
+  await auto.press("Space");
+  await expect(auto).toBeChecked();
+  expect(Number(await maxX.inputValue()) - Number(await minX.inputValue())).toBeLessThan(0.25);
+
+  await minY.fill("8");
+  await article.getByRole("button", { name: "Reset All" }).press("Enter");
+  await expect(auto).toBeChecked();
+  expect(Number(await maxX.inputValue()) - Number(await minX.inputValue())).toBe(initialWidth);
+});
+
+test("open methods frame their latest construction", async ({ page }) => {
+  await page.goto("/?ea&initialScreen=2");
+  const article = page.getByRole("article");
+  const minX = article.getByRole("textbox", { name: "x minimum" });
+  const maxX = article.getByRole("textbox", { name: "x maximum" });
+  await expect(article.getByRole("checkbox", { name: "Auto zoom" })).toBeChecked();
+  const initialWidth = Number(await maxX.inputValue()) - Number(await minX.inputValue());
+  await article.getByRole("button", { name: "Step", exact: true }).press("Enter");
+  const lower = Number(await minX.inputValue());
+  const upper = Number(await maxX.inputValue());
+  expect(upper - lower).toBeLessThan(initialWidth / 4);
+  expect(lower).toBeLessThan(1.5);
+  expect(upper).toBeGreaterThan(1.52);
+});

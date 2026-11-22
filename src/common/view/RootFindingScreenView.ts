@@ -3,10 +3,12 @@ import { Bounds2 } from "scenerystack/dot";
 import { HBox, Node, Rectangle, Text, VBox } from "scenerystack/scenery";
 import { PhetFont, ResetAllButton } from "scenerystack/scenery-phet";
 import { ScreenView } from "scenerystack/sim";
-import { ComboBox, RectangularPushButton } from "scenerystack/sun";
+import { Checkbox, ComboBox, RectangularPushButton } from "scenerystack/sun";
 import { StringManager } from "../../i18n/StringManager.js";
 import Colors from "../../RootFindingColors.js";
 import {
+  AXIS_FIELD_HEIGHT,
+  AXIS_FIELD_WIDTH,
   FIELD_HEIGHT,
   GRAPH_WIDTH,
   HISTORY_ROWS,
@@ -21,6 +23,7 @@ import {
   ROOT_FINDING_COMBO_BOX_OPTIONS,
 } from "../RootFindingButtonOptions.js";
 import { RootFindingPanel } from "../RootFindingPanel.js";
+import { type AxisField, GraphViewport } from "./GraphViewport.js";
 import { createIterationGraph, formatNumber } from "./IterationGraph.js";
 import { RootFindingScreenSummaryContent } from "./RootFindingScreenSummaryContent.js";
 
@@ -57,23 +60,29 @@ function interpolate(pattern: string, values: Record<string, string>): string {
   return pattern.replace(/\{\{(\w+)\}\}/g, (_, key: string) => values[key] ?? "");
 }
 
-function expressionField(model: RootFindingModel, field: Field, name: Label, width: number): Node {
-  const s = strings();
+function textEntry(
+  name: Label,
+  help: Label,
+  valueProperty: Label,
+  invalidProperty: TReadOnlyProperty<boolean>,
+  options: { width: number; height: number; numeric: boolean; edit: (value: string) => void; apply: () => void },
+): Node {
+  const { width, height, numeric, edit, apply } = options;
   const input = new Node({
     tagName: "input",
     inputType: "text",
     focusable: true,
     cursor: "text",
     accessibleName: name,
-    accessibleHelpText: s.editHelpStringProperty,
+    accessibleHelpText: help,
     pdomAttributes: [
       { attribute: "autocomplete", value: "off" },
       { attribute: "spellcheck", value: "false" },
       { attribute: "maxlength", value: "160" },
-      { attribute: "inputmode", value: field === "first" || field === "second" ? "decimal" : "text" },
+      { attribute: "inputmode", value: numeric ? "decimal" : "text" },
     ],
   });
-  const box = new Rectangle(0, 0, width, FIELD_HEIGHT, {
+  const box = new Rectangle(0, 0, width, height, {
     cornerRadius: 4,
     fill: Colors.controlSurfaceColorProperty,
     stroke: Colors.graphAxisColorProperty,
@@ -82,7 +91,7 @@ function expressionField(model: RootFindingModel, field: Field, name: Label, wid
     font: new PhetFont({ size: 15, family: "monospace" }),
     fill: Colors.controlSurfaceTextColorProperty,
     maxWidth: width - 14,
-    centerY: FIELD_HEIGHT / 2,
+    centerY: height / 2,
     left: 7,
   });
   input.children = [box, value];
@@ -91,14 +100,14 @@ function expressionField(model: RootFindingModel, field: Field, name: Label, wid
     input: (event) => {
       const target = event.domEvent?.target;
       if (target instanceof HTMLInputElement) {
-        model.edit(field, target.value);
+        edit(target.value);
       }
     },
     keydown: (event) => {
       const keyEvent = event.domEvent;
       if (keyEvent?.key === "Enter") {
         keyEvent.preventDefault();
-        model.apply();
+        apply();
       } else if (
         keyEvent &&
         (keyEvent.ctrlKey || keyEvent.metaKey) &&
@@ -110,20 +119,92 @@ function expressionField(model: RootFindingModel, field: Field, name: Label, wid
       }
     },
   });
-  model.inputsProperty.link((inputs) => {
-    const next = inputs[field];
+  valueProperty.link((next) => {
     if (input.inputValue !== next) {
       input.inputValue = next;
     }
     value.string = next;
   });
-  model.invalidFieldProperty.link((invalidField) => {
-    const invalid = invalidField === field;
+  invalidProperty.link((invalid) => {
     box.stroke = invalid ? Colors.errorColorProperty : Colors.graphAxisColorProperty;
     box.lineWidth = invalid ? 2 : 1;
     input.setPDOMAttribute("aria-invalid", invalid ? "true" : "false");
   });
-  return new VBox({ align: "left", spacing: 4, children: [label(name, 13, width), input], pdomOrder: [input] });
+  return new VBox({ align: "left", spacing: 4, children: [label(name, 14, width), input], pdomOrder: [input] });
+}
+
+function expressionField(model: RootFindingModel, field: Field, name: Label, width: number): Node {
+  return textEntry(
+    name,
+    strings().editHelpStringProperty,
+    new DerivedProperty([model.inputsProperty], (inputs) => inputs[field]),
+    new DerivedProperty([model.invalidFieldProperty], (invalid) => invalid === field),
+    {
+      width,
+      height: FIELD_HEIGHT,
+      numeric: field === "first" || field === "second",
+      edit: (value) => model.edit(field, value),
+      apply: () => model.apply(),
+    },
+  );
+}
+
+function axisControls(viewport: GraphViewport): Node {
+  const s = strings();
+  const fields: readonly AxisField[] = ["minX", "maxX", "minY", "maxY"];
+  const entries = fields.map((field) =>
+    textEntry(
+      s[`${field}StringProperty`],
+      s.axesApplyHelpStringProperty,
+      new DerivedProperty([viewport.draftProperty], (draft) => draft[field]),
+      new DerivedProperty(
+        [viewport.invalidAxisProperty],
+        (axis) => axis !== null && field.endsWith(axis.toUpperCase()),
+      ),
+      {
+        width: AXIS_FIELD_WIDTH,
+        height: AXIS_FIELD_HEIGHT,
+        numeric: true,
+        edit: (value) => viewport.edit(field, value),
+        apply: () => viewport.apply(),
+      },
+    ),
+  );
+  const auto = new Checkbox(viewport.autoProperty, label(s.autoZoomStringProperty, 13, 82), {
+    accessibleName: s.autoZoomStringProperty,
+    accessibleHelpText: s.autoAxesHintStringProperty,
+    boxWidth: 18,
+    checkboxColor: Colors.controlSurfaceTextColorProperty,
+    checkboxColorBackground: Colors.controlSurfaceColorProperty,
+    touchAreaYDilation: 5,
+  });
+  const apply = button(s.applyAxesStringProperty, () => viewport.apply(), 97);
+  const message = new DerivedProperty(
+    [
+      viewport.autoProperty,
+      viewport.invalidAxisProperty,
+      s.autoAxesHintStringProperty,
+      s.manualAxesHintStringProperty,
+      s.invalidAxesStringProperty,
+    ],
+    (automatic, invalid, automaticHint, manualHint, error) =>
+      invalid ? error : automatic ? automaticHint : manualHint,
+  );
+  const note = label(message, 12, GRAPH_WIDTH - 20);
+  viewport.invalidAxisProperty.link((invalid) => {
+    note.fill = invalid ? Colors.errorColorProperty : Colors.mutedColorProperty;
+  });
+  const announcement = new Node({ tagName: "p", innerContent: message });
+  const row = new HBox({ align: "bottom", spacing: 8, children: [auto, ...entries, apply] });
+  return new RootFindingPanel(
+    new VBox({
+      align: "left",
+      spacing: 5,
+      children: [row, note, announcement],
+      pdomOrder: [auto, ...entries, apply, announcement],
+    }),
+    { minWidth: GRAPH_WIDTH, xMargin: 9, yMargin: 6 },
+  );
 }
 
 function setupPanel(model: RootFindingModel, menuLayer: Node): Node {
@@ -422,7 +503,10 @@ export class RootFindingScreenView extends ScreenView {
         return [formula, s[`${status}StringProperty`].value, construction, interval].filter(Boolean).join(" ");
       },
     );
-    super({ screenSummaryContent: new RootFindingScreenSummaryContent(description, details) });
+    super({
+      layoutBounds: new Bounds2(0, 0, 1024, 674),
+      screenSummaryContent: new RootFindingScreenSummaryContent(description, details),
+    });
 
     const menuLayer = new Node();
     const methodHint = isBracketed(method)
@@ -437,18 +521,31 @@ export class RootFindingScreenView extends ScreenView {
       spacing: 4,
       children: [label(title, 29, GRAPH_WIDTH, true), label(description, 16, GRAPH_WIDTH), hint],
     });
-    this.graph = createIterationGraph(model);
+    const viewport = new GraphViewport(model);
+    const boundsControls = axisControls(viewport);
+    this.graph = new VBox({
+      align: "left",
+      spacing: 6,
+      children: [createIterationGraph(model, viewport), boundsControls],
+    });
     this.history = historyPanel(model);
     this.controls = new VBox({
       align: "left",
       spacing: 12,
       children: [setupPanel(model, menuLayer), playPanel(model)],
     });
-    this.resetAll = new ResetAllButton({ ...FLAT_RESET_ALL_BUTTON_OPTIONS, listener: () => model.reset() });
+    this.resetAll = new ResetAllButton({
+      ...FLAT_RESET_ALL_BUTTON_OPTIONS,
+      listener: () => {
+        this.interruptSubtreeInput();
+        model.reset();
+        viewport.reset();
+      },
+    });
     this.addChild(
       new Node({
         children: [this.header, this.graph, this.history, this.controls, this.resetAll, menuLayer],
-        pdomOrder: [this.controls, this.history, this.resetAll, menuLayer],
+        pdomOrder: [this.controls, this.graph, this.history, this.resetAll, menuLayer],
       }),
     );
   }
@@ -459,7 +556,7 @@ export class RootFindingScreenView extends ScreenView {
     this.header.left = margin;
     this.header.top = 14;
     this.graph.left = margin;
-    this.graph.top = 96;
+    this.graph.top = 91;
     this.controls.setScaleMagnitude(portrait ? 1.75 : 1);
     this.controls.left = portrait ? margin : this.graph.right + margin;
     this.controls.top = portrait ? this.graph.bottom + 12 : this.graph.top;

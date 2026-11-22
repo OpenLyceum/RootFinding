@@ -10,11 +10,11 @@ parentheses, +, −, *, /, ^, abs, sqrt, cbrt, exp, log, sin, cos, and tan.
 It builds arithmetic closures from tokens. Input length is bounded to 160
 characters. Calculations and graph sampling both use the compiled closures.
 
-The screen view subscribes to run snapshots. The plot caches its function
-samples until the problem changes and redraws the latest construction from the
-iteration data. Its axes follow the starting values so successive steps can be
-compared against a stable scale. A very large extrapolation may move off the
-plot, but the history still reports its value.
+The screen view subscribes to run snapshots. Auto zoom frames the retained
+bracket or the latest open-method construction. In manual mode, the two axis
+ranges stay fixed as the solver advances. The plot refreshes its function
+samples when the problem or viewport changes. Values outside the graph's
+supported range remain available in the iteration history.
 
 The app uses the template’s bootstrap, color profiles, translations, and PWA
 build. Model tests cover the six numerical methods; Chromium tests exercise the
