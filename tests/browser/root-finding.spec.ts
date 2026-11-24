@@ -164,3 +164,33 @@ test("each method explains its construction using the current iteration", async 
   await article.getByRole("button", { name: "Step", exact: true }).press("Enter");
   await expect(article.getByText(/The third sample is c.*Fit x as a quadratic in y/)).toBeAttached();
 });
+
+test("both graph handles are in the tab order and move the applied bracket horizontally", async ({ page }) => {
+  await page.goto("/?ea");
+  const firstHandle = page.getByRole("application", { name: "Left endpoint a", exact: true });
+  const secondHandle = page.getByRole("application", { name: "Right endpoint b", exact: true });
+  const firstField = page.getByRole("textbox", { name: "Left endpoint a", exact: true });
+  const secondField = page.getByRole("textbox", { name: "Right endpoint b", exact: true });
+
+  const initialFirst = Number(await firstField.inputValue());
+  const initialSecond = Number(await secondField.inputValue());
+  await firstHandle.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(firstHandle).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  const afterCoarseStep = Number(await firstField.inputValue());
+  expect(afterCoarseStep).toBeLessThan(initialFirst);
+  await page.keyboard.press("Shift+ArrowRight");
+  const afterFineStep = Number(await firstField.inputValue());
+  expect(afterFineStep).toBeGreaterThan(afterCoarseStep);
+  expect(afterFineStep).toBeLessThan(initialFirst);
+  await page.keyboard.press("ArrowUp");
+  expect(Number(await firstField.inputValue())).toBe(afterFineStep);
+
+  await page.keyboard.press("Tab");
+  await expect(secondHandle).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  expect(Number(await secondField.inputValue())).toBeGreaterThan(initialSecond);
+  await expect(secondHandle).toBeFocused();
+});

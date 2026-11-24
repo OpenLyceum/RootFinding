@@ -114,11 +114,15 @@ export function createIterationGraph(model: RootFindingModel, viewport: GraphVie
   // Drag the starting values straight on the graph. With two seeds, the
   // handles keep their order so a bracket never turns inside out.
   const bracketed = isBracketed(model.method);
+  const labels = StringManager.getInstance().getSolverStrings();
+  const firstName = bracketed ? labels.leftStringProperty : labels.startStringProperty;
+  const secondName = bracketed ? labels.rightStringProperty : labels.secondStringProperty;
   const gap = () => (viewport.boundsProperty.value.maxX - viewport.boundsProperty.value.minX) / 200;
   const seeds = (usesAuxiliary(model.method) ? (["first"] as const) : (["first", "second"] as const)).map(
     (field) =>
       new StartHandle(plot, {
         symbol: bracketed ? (field === "first" ? "a" : "b") : field === "first" ? "x₀" : "x₁",
+        accessibleName: field === "first" ? firstName : secondName,
         format: formatNumber,
         hold: (held) => viewport.hold(held),
         move: (x) => model.moveStart(field, x),

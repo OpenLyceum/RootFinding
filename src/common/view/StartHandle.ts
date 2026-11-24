@@ -1,13 +1,17 @@
-import type { Bounds2 } from "scenerystack/dot";
-import { Circle, DragListener, Node, Text } from "scenerystack/scenery";
+import type { TReadOnlyProperty } from "scenerystack/axon";
+import { type Bounds2, roundSymmetric, Vector2 } from "scenerystack/dot";
+import { Circle, DragListener, KeyboardDragListener, Node, Text } from "scenerystack/scenery";
 import { PhetFont } from "scenerystack/scenery-phet";
 import Colors from "../../RootFindingColors.js";
 import type { GraphBounds } from "./GraphViewport.js";
 
 const RADIUS = 8;
+const KEYBOARD_STEP = 5;
+const FINE_KEYBOARD_STEP = 1;
 
 type StartHandleOptions = {
   symbol: string;
+  accessibleName: TReadOnlyProperty<string>;
   // Keep the dragged value inside [low, high] (used to stop a bracket from crossing).
   limits: () => [number, number];
   move: (x: number) => void;
@@ -15,27 +19,40 @@ type StartHandleOptions = {
   hold: (held: boolean) => void;
 };
 
+/** Smallest drag increment at the current zoom level. */
+function dragUnit(span: number): number {
+  return 10 ** (Math.floor(Math.log10(span)) - 2);
+}
+
 /** Round to about three significant figures of the visible span, so dragged values read cleanly. */
 function snap(x: number, span: number): number {
-  const unit = 10 ** (Math.floor(Math.log10(span)) - 2);
-  return Number((Math.round(x / unit) * unit).toPrecision(12));
+  const unit = dragUnit(span);
+  return Number((roundSymmetric(x / unit) * unit).toPrecision(12));
 }
 
 /**
- * Pointer handle for one starting value of a root-finding run. It sits on the
- * x-axis at the starting value and drags horizontally. The text fields in the
- * setup panel remain the keyboard path for the same value.
+ * A pointer- and keyboard-draggable starting value on the graph’s x-axis.
  */
 export class StartHandle extends Node {
   private readonly readout: Text;
   private readonly symbol: string;
   private readonly plot: Bounds2;
   private readonly dragging: DragListener;
+  private readonly keyboardDragging: KeyboardDragListener;
   private readonly format: (x: number) => string;
   private graphBounds: GraphBounds | null = null;
+  private startValue = 0;
 
   public constructor(plot: Bounds2, options: StartHandleOptions) {
-    super({ cursor: "ew-resize", excludeInvisibleChildrenFromBounds: true });
+    super({
+      cursor: "ew-resize",
+      excludeInvisibleChildrenFromBounds: true,
+      tagName: "div",
+      ariaRole: "application",
+      focusable: true,
+      accessibleName: options.accessibleName,
+      accessibleNameBehavior: (_node, nodeOptions, name) => ({ ...nodeOptions, ariaLabel: name }),
+    });
     this.plot = plot;
     this.symbol = options.symbol;
     this.format = options.format;
@@ -88,7 +105,34 @@ export class StartHandle extends Node {
         options.hold(false);
       },
     });
+    const moveByKeyboard = (steps: number) => {
+      if (!this.graphBounds) {
+        return;
+      }
+      const span = this.graphBounds.maxX - this.graphBounds.minX;
+      const [low, high] = options.limits();
+      const current = this.startValue;
+      const candidate = snap(current + steps * dragUnit(span), span);
+      const next = Math.max(Math.min(low, current), Math.min(Math.max(high, current), candidate));
+      if (next !== current) {
+        options.move(next);
+      }
+    };
+    this.keyboardDragging = new KeyboardDragListener({
+      keyboardDragDirection: "leftRight",
+      dragDelta: KEYBOARD_STEP,
+      shiftDragDelta: FINE_KEYBOARD_STEP,
+      positionProperty: {
+        get value() {
+          return Vector2.ZERO;
+        },
+        set value(delta: Vector2) {
+          moveByKeyboard(delta.x);
+        },
+      },
+    });
     this.addInputListener(this.dragging);
+    this.addInputListener(this.keyboardDragging);
     this.dragging.isHighlightedProperty.link((show) => {
       halo.opacity = show ? 0.45 : 0.25;
       this.readout.visible = show;
@@ -98,6 +142,7 @@ export class StartHandle extends Node {
   /** Place the handle at x on the axis, clamped to the plot. */
   public place(x: number, bounds: GraphBounds): void {
     this.graphBounds = bounds;
+    this.startValue = x;
     const { minX, maxX, minY, maxY } = bounds;
     const fraction = (x - minX) / (maxX - minX);
     // A starting value the camera has zoomed away from stays grabbable, pinned
@@ -120,6 +165,9 @@ export class StartHandle extends Node {
   }
 
   public override dispose(): void {
+    this.removeInputListener(this.keyboardDragging);
+    this.removeInputListener(this.dragging);
+    this.keyboardDragging.dispose();
     this.dragging.dispose();
     super.dispose();
   }
