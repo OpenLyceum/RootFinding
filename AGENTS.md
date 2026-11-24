@@ -14,6 +14,7 @@ Root Finding (`root-finding`) is a SceneryStack simulation scaffolded from Scene
 - `src/common/view/RootFindingScreenView.ts` and `IterationGraph.ts` provide the shared interface.
 - `src/i18n/StringManager.ts` exposes localized Properties. Add labels to all three locales.
 - The six top-level screen folders wrap the shared model and view with independent state.
+- `src/main.ts` opens Bisection by default and defers to Joist when a link supplies `screens` or `initialScreen`.
 
 ## Compliance carve-outs
 

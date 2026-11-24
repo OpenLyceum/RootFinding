@@ -19,6 +19,7 @@
 // brand.js MUST be first; importing it runs the whole chain (init→assert→splash→brand) before main.
 import "./brand.js";
 
+import { QueryStringMachine } from "scenerystack/query-string-machine";
 import { onReadyToLaunch, Sim } from "scenerystack/sim";
 import { Tandem } from "scenerystack/tandem";
 import { BisectionScreen } from "./bisection/BisectionScreen.js";
@@ -28,7 +29,6 @@ import { FixedPointIterationScreen } from "./fixed-point/FixedPointIterationScre
 import { StringManager } from "./i18n/StringManager.js";
 import { NewtonsMethodScreen } from "./newton/NewtonsMethodScreen.js";
 import { RootFindingPreferencesModel } from "./preferences/RootFindingPreferencesModel.js";
-import rootFindingQueryParameters from "./preferences/rootFindingQueryParameters.js";
 import RootFindingColors from "./RootFindingColors.js";
 import { SecantScreen } from "./secant/SecantScreen.js";
 
@@ -80,7 +80,10 @@ onReadyToLaunch(() => {
     },
   });
 
-  if (rootFindingQueryParameters.openBisectionByDefault) {
+  // Joist owns screen selection when a deep link supplies either of its screen parameters.
+  const hasScreenSelection =
+    QueryStringMachine.containsKey("initialScreen") || QueryStringMachine.containsKey("screens");
+  if (!hasScreenSelection) {
     sim.isConstructionCompleteProperty.lazyLink((complete) => {
       if (complete) {
         sim.selectedScreenProperty.value = screens[0];
