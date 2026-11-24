@@ -12,8 +12,8 @@
     "title": "Simulation",
     "syntaxHeading": "Syntaxe des fonctions personnalisées",
     "operators": "Saisissez une expression en x. Utilisez * pour la multiplication, / pour la division et ^ pour les puissances. Les parenthèses fixent l’ordre des opérations.",
-    "functions": "Utilisez pi ou e pour les constantes. Fonctions disponibles : abs, sqrt, cbrt, exp, log, sin, cos et tan.",
-    "example": "Par exemple, sin(x) - x/2. La méthode de Newton demande aussi f′(x). L’itération du point fixe demande une fonction g(x)."
+    "functions": "Utilisez pi ou e pour les constantes. Fonctions disponibles : abs, sqrt, cbrt, exp, log, sin, cos, tan et atan.",
+    "example": "Par exemple, sin(x) - x/2. La méthode de Newton utilise f′(x), ou dérive f numériquement si f′(x) est vide. L’itération du point fixe demande une fonction g(x)."
   },
   "solver": {
     "heading": "Conditions initiales",
@@ -126,6 +126,17 @@
     "openDecision": "Prenez {{x}} comme prochaine estimation. Son résidu est {{residual}}.",
     "exactDecision": "f({{x}}) = 0. Cette estimation est une racine.",
     "fixedExactDecision": "Pour x = {{x}}, g(x) = x et f(x) = 0.",
-    "readyDecision": "Faites un pas pour voir la première construction."
+    "readyDecision": "Faites un pas pour voir la première construction.",
+    "cycle": "Les estimations se répètent en cycle.",
+    "order": "Ordre",
+    "errorPlot": "Graphe de l’erreur",
+    "derivativeMismatch": "Vérifiez f′(x) : elle ne correspond pas à la pente de f(x).",
+    "derivativeNumeric": "f′(x) est vide : la pente de f(x) est calculée numériquement.",
+    "derivativeBlank": "Laissez f′(x) vide pour dériver f(x) numériquement.",
+    "mapSlope": "|g′(x)| ≈ {{value}}",
+    "exponential": "Une exponentielle",
+    "overshoot": "Tangentes qui dépassent",
+    "nearFlat": "Un départ presque plat",
+    "fixedDiverge": "Une application qui repousse"
   }
 }

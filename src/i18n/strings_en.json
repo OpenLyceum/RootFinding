@@ -12,8 +12,8 @@
     "title": "Simulation",
     "syntaxHeading": "Custom function syntax",
     "operators": "Enter arithmetic in x. Use * for multiplication, / for division, and ^ for powers. Parentheses control the order of operations.",
-    "functions": "Use pi or e for constants. Supported functions are abs, sqrt, cbrt, exp, log, sin, cos, and tan.",
-    "example": "For example, sin(x) - x/2. Newton also needs f′(x). Fixed-Point Iteration needs a map g(x)."
+    "functions": "Use pi or e for constants. Supported functions are abs, sqrt, cbrt, exp, log, sin, cos, tan, and atan.",
+    "example": "For example, sin(x) - x/2. Newton uses f′(x), or differentiates f numerically when f′(x) is blank. Fixed-Point Iteration needs a map g(x)."
   },
   "solver": {
     "heading": "Starting conditions",
@@ -126,6 +126,17 @@
     "openDecision": "Use {{x}} as the next guess. Its residual is {{residual}}.",
     "exactDecision": "f({{x}}) = 0. This estimate is a root.",
     "fixedExactDecision": "At x = {{x}}, g(x) = x and f(x) = 0.",
-    "readyDecision": "Press Step to see the first construction."
+    "readyDecision": "Press Step to see the first construction.",
+    "cycle": "The estimates repeat in a cycle.",
+    "order": "Order",
+    "errorPlot": "Error plot",
+    "derivativeMismatch": "Check f′(x): it does not match the slope of f(x).",
+    "derivativeNumeric": "f′(x) is blank, so the slope of f(x) is computed numerically.",
+    "derivativeBlank": "Leave f′(x) blank to differentiate f(x) numerically.",
+    "mapSlope": "|g′(x)| ≈ {{value}}",
+    "exponential": "An exponential",
+    "overshoot": "Overshooting tangents",
+    "nearFlat": "A nearly flat start",
+    "fixedDiverge": "A map that pushes away"
   }
 }

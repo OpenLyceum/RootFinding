@@ -21,6 +21,7 @@ export type Status =
   | "undefined"
   | "zeroSlope"
   | "stagnation"
+  | "cycle"
   | "limit"
   | "inconsistent";
 type StepKind = "initial" | "midpoint" | "tangent" | "chord" | "secant" | "cobweb" | "inverseQuadratic";
@@ -216,8 +217,12 @@ export class RootSolver {
     if (this.method === "fixedPoint" && fixedResidual === 0 && residual > TOLERANCE) {
       return "inconsistent";
     }
-    if (stationary || (!this.bracket && this.last?.x === estimate.x)) {
+    if (stationary) {
       return "stagnation";
+    }
+    // Back at the estimate from two steps ago: the iteration has entered a 2-cycle.
+    if (!this.bracket && this.last?.x === estimate.x) {
+      return "cycle";
     }
     return this.count >= ITERATION_LIMIT ? "limit" : "working";
   }

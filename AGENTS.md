@@ -4,7 +4,16 @@ Sim-specific context for AI assistants. General SceneryStack guidance: [OpenLyce
 
 ## Project
 
-Root Finding (`root-finding`) is a SceneryStack simulation scaffolded from SceneryStackTemplate.
+Root Finding (`root-finding`) has one screen per method: Bisection, Newton, False Position, Secant, Fixed-Point and Brent. Each screen shares the model and view and keeps its own state.
+
+- **Examples:** two well-behaved roots (cubic, cos x − x), plus examples showing where a method fails or slows:
+  - eˣ − 10 for the bracketing methods and Secant
+  - the nearly fixed endpoint, for False Position only
+  - for Newton: a repeated root, a 2-cycle, atan x overshooting, and a start where f′ ≈ 0
+  - for Fixed-Point: a neutral map with |g′| = 1, and a repelling one with |g′| > 1
+- **Newton's f′:** the student may type f′ or leave it blank for a numerical derivative. A typed f′ that disagrees with f's slope near x₀ is flagged in the setup note but still used, so a wrong derivative can be studied.
+- **Status:** a 2-cycle reports `cycle`. A repeated estimate reports `stagnation`. Fixed-Point shows |g′(xₙ)| in the status line.
+- **History:** the table's Order column estimates p from three successive step sizes. "Error plot" swaps the table for log₁₀|f(xₖ)| against k, with the tolerance drawn as a dashed line.
 
 ## Key files
 
@@ -19,7 +28,6 @@ Root Finding (`root-finding`) is a SceneryStack simulation scaffolded from Scene
 ## Compliance carve-outs
 
 - `memory-leak:StartHandle` — plot start-point handle; list via carve-out (inventory gap under happy-dom).
-None.
 
 ## Testing
 

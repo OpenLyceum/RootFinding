@@ -9,6 +9,7 @@ const functions = new Map<string, Expression>([
   ["sin", Math.sin],
   ["cos", Math.cos],
   ["tan", Math.tan],
+  ["atan", Math.atan],
 ]);
 
 // The size bound also bounds parser recursion and evaluator depth.

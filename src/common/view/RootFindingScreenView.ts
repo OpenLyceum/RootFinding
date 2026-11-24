@@ -1,6 +1,7 @@
-import { DerivedProperty, Multilink, NumberProperty, type TReadOnlyProperty } from "scenerystack/axon";
-import { Bounds2 } from "scenerystack/dot";
-import { HBox, Node, Rectangle, Text, VBox } from "scenerystack/scenery";
+import { BooleanProperty, DerivedProperty, Multilink, NumberProperty, type TReadOnlyProperty } from "scenerystack/axon";
+import { Bounds2, roundSymmetric } from "scenerystack/dot";
+import { Shape } from "scenerystack/kite";
+import { Circle, HBox, Line, Node, Path, Rectangle, RichText, Text, VBox } from "scenerystack/scenery";
 import { PhetFont, ResetAllButton } from "scenerystack/scenery-phet";
 import { ScreenView } from "scenerystack/sim";
 import { Checkbox, ComboBox, RectangularPushButton } from "scenerystack/sun";
@@ -15,8 +16,18 @@ import {
   SCREEN_VIEW_MARGIN,
   SETUP_WIDTH,
 } from "../../RootFindingConstants.js";
-import { type Field, isBracketed, type Method, type Preset, presetsFor, usesAuxiliary } from "../model/problems.js";
+import {
+  type Field,
+  isBracketed,
+  type Method,
+  numericalDerivative,
+  type Preset,
+  presetsFor,
+  TOLERANCE,
+  usesAuxiliary,
+} from "../model/problems.js";
 import type { RootFindingModel } from "../model/RootFindingModel.js";
+import type { Iteration } from "../model/solver.js";
 import {
   FLAT_PANEL_PUSH_BUTTON_OPTIONS,
   FLAT_RESET_ALL_BUTTON_OPTIONS,
@@ -265,29 +276,43 @@ function setupPanel(model: RootFindingModel, menuLayer: Node): Node {
         startingValues,
       ]
     : [functionField, startingValues];
+  // Newton's applied f′ is either typed and checked against f, or derived numerically.
+  const derivativeStateProperty = new DerivedProperty([model.runProperty], ({ problem }) =>
+    problem.derivativeMismatch ? "mismatch" : problem.numericDerivative ? "numeric" : "typed",
+  );
   const messageProperty = new DerivedProperty(
     [
       model.invalidFieldProperty,
       draft,
       applied,
+      derivativeStateProperty,
       s.syntaxErrorStringProperty,
       s.numberErrorStringProperty,
       s.pendingStringProperty,
       s.expressionHelpStringProperty,
+      s.derivativeMismatchStringProperty,
+      s.derivativeNumericStringProperty,
+      s.derivativeBlankStringProperty,
     ],
-    (invalid, inputs, current, syntax, number, pending, help) =>
+    (invalid, inputs, current, derivative, syntax, number, pending, help, mismatch, numeric, blank) =>
       invalid
         ? invalid === "first" || invalid === "second"
           ? number
           : syntax
         : Object.keys(inputs).some((field) => inputs[field as Field] !== current[field as Field])
           ? pending
-          : help,
+          : model.method !== "newton"
+            ? help
+            : derivative === "mismatch"
+              ? mismatch
+              : derivative === "numeric"
+                ? numeric
+                : blank,
   );
   const note = label(messageProperty, 13, SETUP_WIDTH);
   const liveMessage = new Node({ tagName: "p", innerContent: messageProperty });
-  model.invalidFieldProperty.link((field) => {
-    note.fill = field ? Colors.errorColorProperty : Colors.mutedColorProperty;
+  Multilink.multilink([model.invalidFieldProperty, derivativeStateProperty], (field, derivative) => {
+    note.fill = field || derivative === "mismatch" ? Colors.errorColorProperty : Colors.mutedColorProperty;
   });
   const apply = button(s.applyStringProperty, () => model.apply(), 100, true);
   return new RootFindingPanel(
@@ -300,11 +325,96 @@ function setupPanel(model: RootFindingModel, menuLayer: Node): Node {
   );
 }
 
+/**
+ * Estimated order of convergence at row j from three successive step sizes:
+ * p ≈ log(sⱼ / sⱼ₋₁) / log(sⱼ₋₁ / sⱼ₋₂). Bisection gives 1, the secant ≈ 1.6, Newton 2.
+ */
+function orderAt(sizes: ReadonlyArray<number | null>, j: number): number | null {
+  const [s0, s1, s2] = [sizes[j - 2], sizes[j - 1], sizes[j]];
+  if (!(s0 && s1 && s2 && s0 > 0 && s1 > 0 && s2 > 0)) {
+    return null;
+  }
+  const denominator = Math.log(s1 / s0);
+  const order = Math.log(s2 / s1) / denominator;
+  return Number.isFinite(order) && Math.abs(denominator) > 1e-9 ? order : null;
+}
+
+/** log₁₀ of the residual |f(xₖ)| against the step k, with the tolerance as a dashed line. */
+function errorPlot(model: RootFindingModel, width: number, height: number): Node {
+  const s = strings();
+  const inset = { left: 44, right: 8, top: 6, bottom: 18 };
+  const frame = new Rectangle(0, 0, width, height, { stroke: Colors.graphAxisColorProperty, lineWidth: 0.5 });
+  const layer = new Node();
+  const node = new Node({ children: [frame, layer] });
+  model.runProperty.link(({ history }) => {
+    for (const child of layer.children.slice()) {
+      layer.removeChild(child);
+      child.dispose();
+    }
+    const logs = history.map((row) => Math.log10(Math.max(1e-16, Math.abs(row.estimate.y))));
+    const tolerance = Math.log10(TOLERANCE);
+    const finite = logs.filter((value) => Number.isFinite(value));
+    const low = Math.floor(Math.min(tolerance - 1, ...finite));
+    const high = Math.ceil(Math.max(tolerance + 1, ...finite));
+    const steps = Math.max(5, history.length - 1);
+    const px = (k: number) => inset.left + ((width - inset.left - inset.right) * k) / steps;
+    const py = (value: number) =>
+      inset.top + ((height - inset.top - inset.bottom) * (high - value)) / Math.max(1, high - low);
+    const axisLabel = (markup: string, x: number, y: number) => {
+      const tick = new RichText(markup, { font: new PhetFont(11), fill: Colors.mutedColorProperty, maxWidth: 40 });
+      tick.right = x;
+      tick.centerY = y;
+      layer.addChild(tick);
+    };
+    axisLabel(`10<sup>${high}</sup>`, inset.left - 4, py(high));
+    axisLabel(`10<sup>${low}</sup>`, inset.left - 4, py(low));
+    const toleranceLine = new Line(px(0), py(tolerance), px(steps), py(tolerance), {
+      stroke: Colors.functionCurveColorProperty,
+      lineDash: [5, 4],
+    });
+    layer.addChild(toleranceLine);
+    const stepLabel = label(s.iterationStringProperty, 11, 60);
+    stepLabel.right = width - inset.right;
+    stepLabel.bottom = height - 2;
+    layer.addChild(stepLabel);
+    if (logs.length > 0) {
+      const shape = new Shape();
+      for (const [k, value] of logs.entries()) {
+        if (k === 0) {
+          shape.moveTo(px(k), py(value));
+        } else {
+          shape.lineTo(px(k), py(value));
+        }
+      }
+      layer.addChild(new Path(shape, { stroke: Colors.actionColorProperty, lineWidth: 2 }));
+      for (const [k, value] of logs.entries()) {
+        layer.addChild(new Circle(3, { x: px(k), y: py(value), fill: Colors.actionColorProperty }));
+      }
+    }
+  });
+  return node;
+}
+
+/** The table cells for one history row. */
+function rowValues(record: Iteration, index: number, sizes: ReadonlyArray<number | null>): string[] {
+  const s = strings();
+  const order = orderAt(sizes, index);
+  return [
+    String(record.kind === "initial" ? 0 : index + 1),
+    formatNumber(record.estimate.x),
+    formatNumber(Math.abs(record.estimate.y)),
+    record.size === null ? "—" : formatNumber(record.size),
+    order === null ? "—" : formatNumber(roundSymmetric(order * 100) / 100),
+    s[`${record.kind}StringProperty`].value,
+  ];
+}
+
 function historyPanel(model: RootFindingModel): Node {
   const s = strings();
   const rowsPerPage = HISTORY_ROWS;
   const width = GRAPH_WIDTH - 26;
   const pageProperty = new NumberProperty(0);
+  const showPlotProperty = new BooleanProperty(false);
   const previous = button(
     s.previousStringProperty,
     () => {
@@ -320,17 +430,25 @@ function historyPanel(model: RootFindingModel): Node {
     78,
   );
   const pageLabel = label("", 13, 60);
+  const plotToggle = new Checkbox(showPlotProperty, label(s.errorPlotStringProperty, 13, 110), {
+    boxWidth: 15,
+    spacing: 6,
+    checkboxColor: Colors.textColorProperty,
+    checkboxColorBackground: Colors.panelBackgroundColorProperty,
+    accessibleName: s.errorPlotStringProperty,
+  });
   const heading = new HBox({
     spacing: 10,
-    children: [label(s.historyStringProperty, 19, 275, true), previous, pageLabel, later],
+    children: [label(s.historyStringProperty, 19, 200, true), previous, pageLabel, later, plotToggle],
   });
-  const columns = [0, 49, 152, 263, 380];
-  const widths = [44, 97, 105, 111, 214];
+  const columns = [0, 44, 140, 240, 345, 405];
+  const widths = [40, 92, 96, 100, 55, 175];
   const headerLabels = [
     s.iterationStringProperty,
     s.estimateStringProperty,
     s.residualStringProperty,
     isBracketed(model.method) ? s.widthStringProperty : s.changeStringProperty,
+    s.orderStringProperty,
     s.constructionStringProperty,
   ];
   const header = new Node({
@@ -346,13 +464,21 @@ function historyPanel(model: RootFindingModel): Node {
   empty.fill = Colors.mutedColorProperty;
   const backing = new Rectangle(0, 0, width, 19 * rowsPerPage, { pickable: false });
   const resultText = new Node({ tagName: "p" });
-  const body = new Node({ children: [backing, empty, textLayer] });
+  const table = new Node({ children: [header, new Node({ y: 20, children: [backing, empty, textLayer] })] });
+  const plot = errorPlot(model, width, 19 * rowsPerPage + 18);
+  showPlotProperty.link((showPlot) => {
+    table.visible = !showPlot;
+    plot.visible = showPlot;
+    previous.visible = !showPlot;
+    later.visible = !showPlot;
+    pageLabel.visible = !showPlot;
+  });
   const panel = new RootFindingPanel(
     new VBox({
       align: "left",
       spacing: 5,
-      children: [heading, header, body, resultText],
-      pdomOrder: [previous, later, resultText],
+      children: [heading, new Node({ children: [table, plot] }), resultText],
+      pdomOrder: [previous, later, plotToggle, resultText],
     }),
   );
   model.runProperty.link(({ history }) => {
@@ -370,18 +496,11 @@ function historyPanel(model: RootFindingModel): Node {
       pageLabel.string = `${index + 1} / ${pages}`;
       empty.visible = history.length === 0;
       const start = index * rowsPerPage;
+      const sizes = history.map((row) => row.size);
       const descriptions: string[] = [];
       for (const [i, row] of texts.entries()) {
         const record = history[start + i];
-        const values = record
-          ? [
-              String(record.kind === "initial" ? 0 : start + i + 1),
-              formatNumber(record.estimate.x),
-              formatNumber(Math.abs(record.estimate.y)),
-              record.size === null ? "—" : formatNumber(record.size),
-              s[`${record.kind}StringProperty`].value,
-            ]
-          : [];
+        const values = record ? rowValues(record, start + i, sizes) : [];
         if (record) {
           descriptions.push(headerLabels.map((name, j) => `${name.value} ${values[j]}`).join(", "));
         }
@@ -424,6 +543,7 @@ function playPanel(model: RootFindingModel): Node {
     "undefined",
     "zeroSlope",
     "stagnation",
+    "cycle",
     "limit",
     "inconsistent",
   ] as const;
@@ -434,6 +554,7 @@ function playPanel(model: RootFindingModel): Node {
       ...statusKeys.map((k) => s[`${k}StringProperty`]),
       ...kindKeys.map((k) => s[`${k}StringProperty`]),
       s.stepHeaderStringProperty,
+      s.mapSlopeStringProperty,
     ],
     () => {
       const { history, status } = model.runProperty.value;
@@ -448,6 +569,12 @@ function playPanel(model: RootFindingModel): Node {
               kind: s[`${latest.kind}StringProperty`].value,
             })
           : s[`${status}StringProperty`].value;
+      // Fixed-point iteration converges near a fixed point x* when |g′(x*)| < 1.
+      const g = model.runProperty.value.problem.auxiliary;
+      if (model.method === "fixedPoint" && latest && g) {
+        const slope = Math.abs(numericalDerivative(g)(latest.estimate.x));
+        state.string += `  ·  ${interpolate(s.mapSlopeStringProperty.value, { value: formatNumber(slope) })}`;
+      }
       state.fill = active
         ? Colors.textColorProperty
         : status === "exact" || status === "converged"

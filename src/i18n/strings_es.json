@@ -12,8 +12,8 @@
     "title": "Simulación",
     "syntaxHeading": "Sintaxis de funciones personalizadas",
     "operators": "Escriba una expresión en x. Use * para multiplicar, / para dividir y ^ para potencias. Los paréntesis fijan el orden de las operaciones.",
-    "functions": "Use pi o e para las constantes. Las funciones admitidas son abs, sqrt, cbrt, exp, log, sin, cos y tan.",
-    "example": "Por ejemplo, sin(x) - x/2. El método de Newton también requiere f′(x). La iteración de punto fijo requiere una función g(x)."
+    "functions": "Use pi o e para las constantes. Las funciones admitidas son abs, sqrt, cbrt, exp, log, sin, cos, tan y atan.",
+    "example": "Por ejemplo, sin(x) - x/2. El método de Newton usa f′(x), o deriva f numéricamente si f′(x) está vacía. La iteración de punto fijo requiere una función g(x)."
   },
   "solver": {
     "heading": "Condiciones iniciales",
@@ -126,6 +126,17 @@
     "openDecision": "Use {{x}} como siguiente aproximación. Su residuo es {{residual}}.",
     "exactDecision": "f({{x}}) = 0. Esta estimación es una raíz.",
     "fixedExactDecision": "En x = {{x}}, g(x) = x y f(x) = 0.",
-    "readyDecision": "Pulse Un paso para ver la primera construcción."
+    "readyDecision": "Pulse Un paso para ver la primera construcción.",
+    "cycle": "Las estimaciones se repiten en un ciclo.",
+    "order": "Orden",
+    "errorPlot": "Gráfica del error",
+    "derivativeMismatch": "Revisa f′(x): no coincide con la pendiente de f(x).",
+    "derivativeNumeric": "f′(x) está vacía, así que la pendiente de f(x) se calcula numéricamente.",
+    "derivativeBlank": "Deja f′(x) vacía para derivar f(x) numéricamente.",
+    "mapSlope": "|g′(x)| ≈ {{value}}",
+    "exponential": "Una exponencial",
+    "overshoot": "Tangentes que se pasan",
+    "nearFlat": "Un inicio casi plano",
+    "fixedDiverge": "Una aplicación que aleja"
   }
 }

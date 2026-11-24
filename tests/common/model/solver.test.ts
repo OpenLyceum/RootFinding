@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileExpression } from "../../../src/common/model/expressions.js";
+import * as presetsModule from "../../../src/common/model/problems.js";
 import {
   type Inputs,
   ITERATION_LIMIT,
@@ -134,7 +135,34 @@ describe("numerical methods", () => {
     const solver = setup(method, presetInputs(method, preset));
     const rows = run(solver);
     expect(rows.map((row) => row.estimate.x)).toEqual(method === "newton" ? [1, 0] : [2, 0]);
-    expect(solver.status).toBe("stagnation");
+    expect(solver.status).toBe("cycle");
+  });
+
+  it("lets Newton differentiate f itself and flags a wrong typed f′", () => {
+    const blank = setup("newton", { ...presetInputs("newton", "cubic"), auxiliary: " " });
+    run(blank);
+    expect(blank.status).toBe("converged");
+    const wrong = validateInputs("newton", { ...presetInputs("newton", "cubic"), auxiliary: "3*x^2" });
+    expect("problem" in wrong && wrong.problem.derivativeMismatch).toBe(true);
+    const right = validateInputs("newton", presetInputs("newton", "cubic"));
+    expect("problem" in right && right.problem.derivativeMismatch).toBe(false);
+  });
+
+  it("shows Newton overshooting and a diverging fixed-point map", () => {
+    const overshoot = setup("newton", presetInputs("newton", "overshoot"));
+    const xs = run(overshoot).map((row) => Math.abs(row.estimate.x));
+    expect(xs[2] ?? 0).toBeGreaterThan(xs[0] ?? Infinity);
+    expect(overshoot.status).not.toBe("converged");
+    const diverge = setup("fixedPoint", presetInputs("fixedPoint", "fixedDiverge"));
+    run(diverge);
+    expect(["undefined", "limit"]).toContain(diverge.status);
+  });
+
+  it.each(methods)("offers only presets that %s can start", (method) => {
+    const { presetsFor } = presetsModule;
+    for (const preset of presetsFor(method)) {
+      expect("problem" in validateInputs(method, presetInputs(method, preset))).toBe(true);
+    }
   });
 
   it("reports when the map's fixed point misses the function root", () => {
