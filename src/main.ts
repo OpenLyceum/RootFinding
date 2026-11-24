@@ -20,7 +20,7 @@
 import "./brand.js";
 
 import { QueryStringMachine } from "scenerystack/query-string-machine";
-import { onReadyToLaunch, Sim } from "scenerystack/sim";
+import { onReadyToLaunch, PreferencesModel, Sim } from "scenerystack/sim";
 import { Tandem } from "scenerystack/tandem";
 import { BisectionScreen } from "./bisection/BisectionScreen.js";
 import { BrentsMethodScreen } from "./brent/BrentsMethodScreen.js";
@@ -29,12 +29,14 @@ import { FixedPointIterationScreen } from "./fixed-point/FixedPointIterationScre
 import { StringManager } from "./i18n/StringManager.js";
 import { NewtonsMethodScreen } from "./newton/NewtonsMethodScreen.js";
 import { RootFindingPreferencesModel } from "./preferences/RootFindingPreferencesModel.js";
+import { RootFindingPreferencesNode } from "./preferences/RootFindingPreferencesNode.js";
 import RootFindingColors from "./RootFindingColors.js";
 import { SecantScreen } from "./secant/SecantScreen.js";
 
 onReadyToLaunch(() => {
   const stringManager = StringManager.getInstance();
 
+  const simPreferences = new RootFindingPreferencesModel(Tandem.ROOT.createTandem("preferences"));
   const screens = [
     new BisectionScreen({
       name: stringManager.getScreenNames().bisectionStringProperty,
@@ -69,7 +71,16 @@ onReadyToLaunch(() => {
   ] as const;
 
   const sim = new Sim(stringManager.getTitleStringProperty(), [...screens], {
-    preferencesModel: new RootFindingPreferencesModel(),
+    preferencesModel: new PreferencesModel({
+      visualOptions: {
+        supportsProjectorMode: true,
+        supportsInteractiveHighlights: true,
+      },
+      simulationOptions: {
+        customPreferences: [{ createContent: () => new RootFindingPreferencesNode(simPreferences) }],
+      },
+      localizationOptions: { supportsDynamicLocale: true },
+    }),
 
     // Optional: fill in credits shown in Help → About
     credits: {

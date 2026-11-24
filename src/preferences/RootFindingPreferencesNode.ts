@@ -4,8 +4,10 @@ import { StringManager } from "../i18n/StringManager.js";
 import Colors from "../RootFindingColors.js";
 import RootFindingNamespace from "../RootFindingNamespace.js";
 
+import type { RootFindingPreferencesModel } from "./RootFindingPreferencesModel.js";
+
 export class RootFindingPreferencesNode extends VBox {
-  public constructor() {
+  public constructor(_preferences: RootFindingPreferencesModel) {
     const strings = StringManager.getInstance().getPreferences();
     const fill = Colors.controlSurfaceTextColorProperty;
     super({
