@@ -18,4 +18,13 @@ Root Finding (`root-finding`) is a SceneryStack simulation scaffolded from Scene
 
 ## Compliance carve-outs
 
+- `memory-leak:StartHandle` — plot start-point handle; list via carve-out (inventory gap under happy-dom).
 None.
+
+## Testing
+
+See the shared Vitest setup (`vitest.config.ts`, `tests/setup.ts`) and `tests/memory-leak.test.ts` for disposal coverage. Add sim-specific unit tests under `tests/` as physics and UI logic land.
+
+## Accessibility
+
+Follow [Baton/ACCESSIBILITY.md](https://github.com/OpenLyceum/Baton/blob/main/ACCESSIBILITY.md): PDOM names, per-screen `*ScreenSummaryContent`, and keyboard-help content. Document any intentional deviations under Compliance carve-outs.

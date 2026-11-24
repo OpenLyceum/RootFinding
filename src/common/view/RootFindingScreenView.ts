@@ -176,7 +176,7 @@ function axisControls(viewport: GraphViewport): Node {
     touchAreaYDilation: 5,
   });
   const apply = button(s.applyAxesStringProperty, () => viewport.apply(), 97);
-  const message = new DerivedProperty(
+  const messageProperty = new DerivedProperty(
     [
       viewport.autoProperty,
       viewport.invalidAxisProperty,
@@ -187,11 +187,11 @@ function axisControls(viewport: GraphViewport): Node {
     (automatic, invalid, automaticHint, manualHint, error) =>
       invalid ? error : automatic ? automaticHint : manualHint,
   );
-  const note = label(message, 12, GRAPH_WIDTH - 20);
+  const note = label(messageProperty, 12, GRAPH_WIDTH - 20);
   viewport.invalidAxisProperty.link((invalid) => {
     note.fill = invalid ? Colors.errorColorProperty : Colors.mutedColorProperty;
   });
-  const announcement = new Node({ tagName: "p", innerContent: message });
+  const announcement = new Node({ tagName: "p", innerContent: messageProperty });
   const row = new HBox({ align: "bottom", spacing: 8, children: [auto, ...entries, apply] });
   return new RootFindingPanel(
     new VBox({
@@ -265,7 +265,7 @@ function setupPanel(model: RootFindingModel, menuLayer: Node): Node {
         startingValues,
       ]
     : [functionField, startingValues];
-  const message = new DerivedProperty(
+  const messageProperty = new DerivedProperty(
     [
       model.invalidFieldProperty,
       draft,
@@ -284,8 +284,8 @@ function setupPanel(model: RootFindingModel, menuLayer: Node): Node {
           ? pending
           : help,
   );
-  const note = label(message, 13, SETUP_WIDTH);
-  const liveMessage = new Node({ tagName: "p", innerContent: message });
+  const note = label(messageProperty, 13, SETUP_WIDTH);
+  const liveMessage = new Node({ tagName: "p", innerContent: messageProperty });
   model.invalidFieldProperty.link((field) => {
     note.fill = field ? Colors.errorColorProperty : Colors.mutedColorProperty;
   });
@@ -304,18 +304,18 @@ function historyPanel(model: RootFindingModel): Node {
   const s = strings();
   const rowsPerPage = HISTORY_ROWS;
   const width = GRAPH_WIDTH - 26;
-  const page = new NumberProperty(0);
+  const pageProperty = new NumberProperty(0);
   const previous = button(
     s.previousStringProperty,
     () => {
-      page.value--;
+      pageProperty.value--;
     },
     78,
   );
   const later = button(
     s.laterStringProperty,
     () => {
-      page.value++;
+      pageProperty.value++;
     },
     78,
   );
@@ -356,14 +356,14 @@ function historyPanel(model: RootFindingModel): Node {
     }),
   );
   model.runProperty.link(({ history }) => {
-    page.value = Math.max(0, Math.ceil(history.length / rowsPerPage) - 1);
+    pageProperty.value = Math.max(0, Math.ceil(history.length / rowsPerPage) - 1);
   });
   const kindKeys = ["initial", "midpoint", "tangent", "chord", "secant", "cobweb", "inverseQuadratic"] as const;
   Multilink.multilinkAny(
-    [model.runProperty, page, ...kindKeys.map((kind) => s[`${kind}StringProperty`]), ...headerLabels],
+    [model.runProperty, pageProperty, ...kindKeys.map((kind) => s[`${kind}StringProperty`]), ...headerLabels],
     () => {
       const { history } = model.runProperty.value;
-      const index = page.value;
+      const index = pageProperty.value;
       const pages = Math.max(1, Math.ceil(history.length / rowsPerPage));
       previous.enabled = index > 0;
       later.enabled = index < pages - 1;
@@ -399,12 +399,12 @@ function historyPanel(model: RootFindingModel): Node {
 
 function playPanel(model: RootFindingModel): Node {
   const s = strings();
-  const playLabel = new DerivedProperty(
+  const playLabelProperty = new DerivedProperty(
     [model.timer.isPlayingProperty, s.playStringProperty, s.pauseStringProperty],
     (playing, runLabel, pauseLabel) => (playing ? pauseLabel : runLabel),
   );
   const play = button(
-    playLabel,
+    playLabelProperty,
     () => {
       model.timer.isPlayingProperty.value = !model.timer.isPlayingProperty.value;
     },
