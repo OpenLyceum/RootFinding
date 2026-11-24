@@ -14,8 +14,10 @@ import {
   GRAPH_WIDTH,
 } from "../../RootFindingConstants.js";
 import type { Problem } from "../model/problems.js";
+import { isBracketed, usesAuxiliary } from "../model/problems.js";
 import type { RootFindingModel } from "../model/RootFindingModel.js";
 import type { GraphBounds, GraphViewport } from "./GraphViewport.js";
+import { StartHandle } from "./StartHandle.js";
 import { StepGraphOverlay } from "./StepGraphOverlay.js";
 
 const plot = new Bounds2(GRAPH_INSET_LEFT, GRAPH_PAD, GRAPH_WIDTH - GRAPH_PAD, GRAPH_HEIGHT - GRAPH_INSET_BOTTOM);
@@ -109,6 +111,28 @@ export function createIterationGraph(model: RootFindingModel, viewport: GraphVie
       }),
     ],
   });
+  // Drag the starting values straight on the graph. With two seeds, the
+  // handles keep their order so a bracket never turns inside out.
+  const bracketed = isBracketed(model.method);
+  const gap = () => (viewport.boundsProperty.value.maxX - viewport.boundsProperty.value.minX) / 200;
+  const seeds = (usesAuxiliary(model.method) ? (["first"] as const) : (["first", "second"] as const)).map(
+    (field) =>
+      new StartHandle(plot, {
+        symbol: bracketed ? (field === "first" ? "a" : "b") : field === "first" ? "x₀" : "x₁",
+        format: formatNumber,
+        hold: (held) => viewport.hold(held),
+        move: (x) => model.moveStart(field, x),
+        limits: () => {
+          const { first, second } = model.runProperty.value.problem;
+          if (!bracketed) {
+            return [-1e6, 1e6];
+          }
+          return field === "first" ? [-1e6, second - gap()] : [first + gap(), 1e6];
+        },
+      }),
+  );
+  graph.addChild(new Node({ children: seeds, excludeInvisibleChildrenFromBounds: true }));
+
   let sampledProblem: Problem | null = null;
   let sampledBounds: GraphBounds | null = null;
 
@@ -175,6 +199,9 @@ export function createIterationGraph(model: RootFindingModel, viewport: GraphVie
       const xView = (x: number) => plot.left + limitProjected((x - minX) / (maxX - minX)) * plot.width;
       const yView = (y: number) => plot.bottom - limitProjected((y - minY) / (maxY - minY)) * plot.height;
       overlay.draw(model, run, xView, yView);
+      for (const [index, seed] of seeds.entries()) {
+        seed.place(index === 0 ? run.problem.first : run.problem.second, bounds);
+      }
     },
   );
   return graph;

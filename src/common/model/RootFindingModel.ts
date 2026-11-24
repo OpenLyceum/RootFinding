@@ -85,6 +85,37 @@ export class RootFindingModel implements TModel {
     this.runProperty.value = this.snapshot(problem);
   }
 
+  /**
+   * Move one starting value of the applied setup, as a drag on the graph does,
+   * and replay the run to the same step so the student sees how the iterations
+   * respond. Unapplied edits to the other fields are left pending.
+   */
+  public moveStart(field: "first" | "second", value: number): void {
+    const text = String(value);
+    const applied = { ...this.appliedInputsProperty.value, [field]: text };
+    const result = validateInputs(this.method, applied);
+    if (!("problem" in result)) {
+      return;
+    }
+    const steps = this.runProperty.value.history.filter((row) => row.kind !== "initial").length;
+    this.presetProperty.value = "custom";
+    this.inputsProperty.value = { ...this.inputsProperty.value, [field]: text };
+    this.appliedInputsProperty.value = applied;
+    this.invalidFieldProperty.value = null;
+    this.timer.reset();
+    this.nextStepTime = SECONDS_PER_STEP;
+    this.solver = new RootSolver(this.method, result.problem);
+    const history = this.solver.initial ? [this.solver.initial] : [];
+    for (let i = 0; i < steps; i++) {
+      const iteration = this.solver.advance();
+      if (!iteration) {
+        break;
+      }
+      history.push(iteration);
+    }
+    this.runProperty.value = this.snapshot(result.problem, history);
+  }
+
   public restart(): void {
     this.start(this.runProperty.value.problem);
   }

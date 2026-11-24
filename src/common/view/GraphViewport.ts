@@ -108,6 +108,9 @@ export class GraphViewport {
   public readonly invalidAxisProperty = new Property<"x" | "y" | null>(null);
 
   private readonly model: RootFindingModel;
+  // While a starting value is dragged the camera stays put, so the handle
+  // follows the pointer instead of the view chasing the handle.
+  private held = false;
 
   public constructor(model: RootFindingModel) {
     this.model = model;
@@ -120,7 +123,7 @@ export class GraphViewport {
       }
     });
     model.runProperty.lazyLink(() => {
-      if (this.autoProperty.value) {
+      if (this.autoProperty.value && !this.held) {
         this.fit();
       }
     });
@@ -137,6 +140,22 @@ export class GraphViewport {
     }
     this.draftProperty.value = asDraft(bounds);
     this.invalidAxisProperty.value = null;
+  }
+
+  /**
+   * Freeze the camera while a starting value is dragged. With auto zoom on,
+   * it first frames the starting values rather than the latest step, so a
+   * seed the run has left behind is in reach.
+   */
+  public hold(held: boolean): void {
+    if (held && this.autoProperty.value) {
+      const run = this.model.runProperty.value;
+      this.publish(automaticBounds(this.model.method, { ...run, history: [], bracket: null }));
+    }
+    this.held = held;
+    if (!held && this.autoProperty.value) {
+      this.fit();
+    }
   }
 
   public edit(field: AxisField, value: string): void {
