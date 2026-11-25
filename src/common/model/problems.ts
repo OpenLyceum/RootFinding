@@ -1,6 +1,8 @@
 import type { Expression } from "./expressions.js";
 import { compileExpression } from "./expressions.js";
 
+export { ITERATION_LIMIT, TOLERANCE } from "../../RootFindingConstants.js";
+
 export type Method = "bisection" | "newton" | "falsePosition" | "secant" | "fixedPoint" | "brent";
 export type Field = "function" | "auxiliary" | "first" | "second";
 export type Inputs = Record<Field, string>;
@@ -17,9 +19,6 @@ export type Problem = {
   numericDerivative?: boolean;
   derivativeMismatch?: boolean;
 };
-
-export const TOLERANCE = 1e-6;
-export const ITERATION_LIMIT = 100;
 
 export function isBracketed(method: Method): boolean {
   return method === "bisection" || method === "falsePosition" || method === "brent";
